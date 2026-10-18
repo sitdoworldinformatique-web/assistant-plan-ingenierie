@@ -36,6 +36,7 @@ cfg = config_mod.charger()
 
 @asynccontextmanager
 async def cycle_de_vie(_app: FastAPI):
+    config_mod.charger().verifier()
     stockage.configurer(config_mod.charger().database_url)
     stockage.initialiser()
     yield

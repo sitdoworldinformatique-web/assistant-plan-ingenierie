@@ -235,3 +235,16 @@ def test_regenerer_un_projet_existant(client, comptes):
     assert len(client.get("/api/projets", headers=c).json()) == 1
     r = client.post("/api/projets/generer", json={"texte": "x", "projet_id": p["id"]}, headers=comptes["ingenieur"])
     assert r.status_code == 403
+
+
+def test_production_refuse_le_secret_de_developpement(monkeypatch):
+    import pytest
+
+    from app import config as config_mod
+
+    monkeypatch.setenv("ENVIRONNEMENT", "production")
+    monkeypatch.delenv("JWT_SECRET", raising=False)
+    with pytest.raises(RuntimeError):
+        config_mod.charger().verifier()
+    monkeypatch.setenv("JWT_SECRET", "x" * 40)
+    config_mod.charger().verifier()
