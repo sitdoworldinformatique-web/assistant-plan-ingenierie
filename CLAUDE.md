@@ -46,5 +46,8 @@ E2E_PYTHON=python3 npx playwright test   # e2e : texte → plan → export SVG
 docker compose up --build       # frontend :5173, API :8000/api/sante
 ```
 
+## Déploiement
+Production : `3-connecteurs-deploiement/DEPLOIEMENT.md` (docker-compose.prod.yml, nginx, sauvegardes). CI : `.github/workflows/ci.yml`.
+
 ## Lots (section 12) — avancement
 Voir `docs/DECISIONS.md` § Avancement.

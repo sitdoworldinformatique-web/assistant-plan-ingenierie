@@ -16,6 +16,7 @@ Chaque choix non couvert par le cahier des charges est noté ici (option la plus
 | 8 | fait — onglets Structure (plan de fondations), Toiture, Solaire, Métré & devis (export CSV), page Administration (prix, rôles, n° d'ordre) ; e2e : l'admin change un prix et le devis le reprend |
 | 9 | fait — connecteur branché : plan rasterisé en PNG 2048 px dans le navigateur, `POST/GET /rendus`, quota journalier, bandeau « non contractuelle » ajouté par Pillow, galerie ; e2e avec service simulé |
 | 10 | fait — `plan.dxf` (ezdxf, calques MURS/PORTES/FENETRES/COTES/TEXTES/ELEC/STRUCTURE, unité cm), `dossier.pdf` (A4 paysage, plan à l'échelle avec cartouche, puis synthèse, contrôles, électricité, structure, toiture/solaire, métré, hypothèses), `metre.xlsx` (formules) ; boutons d'export et e2e de téléchargement |
+| 11 | fait — `docker-compose.prod.yml` (base avec volume, API gunicorn + Alembic, nginx gzip/cache, certbot), sauvegarde, CI GitHub Actions, `DEPLOIEMENT.md` ; non testé : construction des images Docker (pas de démon Docker dans l'environnement de développement), vérifiée par la CI |
 
 ## Décisions
 
@@ -217,3 +218,11 @@ télécharge ce même PDF.
 ### D-035 — XLSX avec formules
 Le métré est exporté avec de vraies formules (`=D*E`, `=SUM`, total) et recalcul à l'ouverture ; un test recalcule le
 fichier avec LibreOffice et le compare au total du moteur. Feuilles : Métré, Quantités, Hypothèses.
+
+### D-036 — Production : garde-fous et déploiement
+`ENVIRONNEMENT=production` : l'API refuse de démarrer avec la clé JWT de développement ou un secret de moins de 32
+caractères. En production `AUTO_CREATE_TABLES=0`, le schéma vient d'Alembic (`alembic upgrade head` au démarrage du
+conteneur ; `alembic check` en CI garantit que la migration suit les modèles). Le certificat HTTPS est obtenu en deux temps
+(modèle nginx HTTP seul puis HTTPS, variable `NGINX_MODELE`). Les images Docker n'ont pas pu être construites dans cet
+environnement (pas de démon Docker) : le fichier compose est validé par `docker compose config`, la construction des deux
+images est un travail de la CI.
