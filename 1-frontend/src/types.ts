@@ -301,3 +301,20 @@ export interface Sante {
   ia_texte_configuree: boolean;
   ia_image_configuree: boolean;
 }
+
+export interface RenduIA {
+  id: number;
+  style: string;
+  libelle: string;
+  date: string;
+  modele: string;
+  mention: string;
+  url: string;
+}
+
+export interface ListeRendus {
+  rendus: RenduIA[];
+  styles: Record<string, string>;
+  ia_image_configuree: boolean;
+  quota: { max: number; utilises: number };
+}

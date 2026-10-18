@@ -3,15 +3,20 @@ from __future__ import annotations
 
 import logging
 import os
+import uuid
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, time
+from pathlib import Path
+from time import perf_counter
 
+from apiconnect import nano_banana
+from apiconnect.erreurs import ErreurIA, IAIndisponible, IANonConfiguree
 from fastapi import Depends, FastAPI, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import JSONResponse, PlainTextResponse, Response
-from sqlalchemy import select, update
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -22,8 +27,8 @@ from app.moteurs import chaine
 from app.moteurs.normes import VERSION_MOTEURS
 from app.moteurs.programme import Programme
 from app.moteurs.regles import MODULES
-from app.rendu import plan_svg, rapport, unifilaire
-from app.stockage import PrixMateriau, Projet, Utilisateur, Validation
+from app.rendu import images, plan_svg, rapport, unifilaire
+from app.stockage import PrixMateriau, Projet, Rendu, Utilisateur, Validation
 
 log = logging.getLogger("api")
 cfg = config_mod.charger()
@@ -249,6 +254,9 @@ def supprimer(projet_id: int, u: Utilisateur = Depends(utilisateur_courant),
     p = _charger(s, projet_id, u, ecriture=True)
     for v in s.scalars(select(Validation).where(Validation.projet_id == p.id)):
         s.delete(v)
+    for r in s.scalars(select(Rendu).where(Rendu.projet_id == p.id)):
+        Path(r.chemin_fichier).unlink(missing_ok=True)
+        s.delete(r)
     s.delete(p)
     s.commit()
     return Response(status_code=204)
@@ -283,6 +291,115 @@ def rapport_txt(projet_id: int, u: Utilisateur = Depends(utilisateur_courant),
     valides = [v for v in _validations(s, p) if v["encore_valide"]]
     texte = rapport.rendre(_detail(s, p), valides)
     return PlainTextResponse(texte, headers={"Content-Disposition": f'attachment; filename="rapport-{p.id}.txt"'})
+
+
+# ---------------------------------------------------------------------------
+# Rendus de présentation Nano Banana (CdC § 8)
+# ---------------------------------------------------------------------------
+
+def _rendus_du_jour(s: Session, u: Utilisateur) -> int:
+    debut = datetime.combine(datetime.now(UTC).date(), time.min, tzinfo=UTC)
+    return s.scalar(select(func.count()).select_from(Rendu)
+                    .where(Rendu.utilisateur_id == u.id, Rendu.date >= debut)) or 0
+
+
+def _rendu(r: Rendu) -> dict:
+    return {"id": r.id, "style": r.style, "libelle": nano_banana.LIBELLES_STYLES.get(r.style, r.style),
+            "date": _iso(r.date), "modele": r.modele, "mention": images.MENTION,
+            "url": f"/api/projets/{r.projet_id}/rendus/{r.id}.jpg"}
+
+
+@app.get("/api/projets/{projet_id}/rendus", tags=["rendus"])
+def lister_rendus(projet_id: int, u: Utilisateur = Depends(utilisateur_courant),
+                  s: Session = Depends(stockage.session)) -> dict:
+    p = _charger(s, projet_id, u)
+    cfg = config_mod.charger()
+    rs = s.scalars(select(Rendu).where(Rendu.projet_id == p.id).order_by(Rendu.date.desc())).all()
+    return {"rendus": [_rendu(r) for r in rs], "styles": nano_banana.LIBELLES_STYLES,
+            "ia_image_configuree": cfg.ia_image_configuree,
+            "quota": {"max": cfg.rendus_max_par_jour, "utilises": _rendus_du_jour(s, u)}}
+
+
+@app.post("/api/projets/{projet_id}/rendus", tags=["rendus"], status_code=201)
+def creer_rendu(projet_id: int, d: schemas.DemandeRendu, u: Utilisateur = Depends(utilisateur_courant),
+                s: Session = Depends(stockage.session), client=Depends(ia.client_image)) -> dict:
+    """Image de présentation à partir du plan exact rasterisé par le navigateur. Non contractuelle."""
+    p = _charger(s, projet_id, u)
+    cfg = config_mod.charger()
+    if client is None:
+        raise ErreurApi(503, "ia_image_non_configuree",
+                        "Les rendus IA sont désactivés : aucune clé du service d'images n'est configurée.")
+    if d.style not in nano_banana.STYLES:
+        raise ErreurApi(422, "style_inconnu", f"Styles possibles : {', '.join(nano_banana.STYLES)}.")
+    if _rendus_du_jour(s, u) >= cfg.rendus_max_par_jour:
+        raise ErreurApi(429, "quota_atteint",
+                        f"Quota atteint : {cfg.rendus_max_par_jour} rendus par jour. Réessayez demain.")
+    try:
+        image_b64, _taille = images.lire_png_base64(d.image_base64)
+    except images.ImageInvalide as e:
+        raise ErreurApi(422, "image_invalide", str(e)) from e
+
+    impl = p.resultats["implantation"]
+    pieces = [{"nom": x["nom"], "largeur": x["net"]["l"], "profondeur": x["net"]["p"], "surface": x["surface_nette"]}
+              for x in impl["pieces"]]
+    toit = p.resultats["toiture"]
+    toiture = f"{toit['type']}, {toit['couverture']}" + (f", pente {toit['pente']:.0f} %" if toit["type"] != "terrasse" else "")
+    journal = orchestrateur.Journal()
+    debut = perf_counter()
+    try:
+        rendu = client.generer_rendu(image_b64, d.style, pieces, toiture)
+    except ErreurIA as e:
+        journal.ajouter("rendre", {"style": d.style}, f"erreur : {e.__class__.__name__}", client.modele, debut,
+                        erreur=True)
+        s.execute(update(Projet).where(Projet.id == p.id)
+                  .values(journal_ia=[*p.journal_ia, *journal.entrees], modifie_le=Projet.modifie_le))
+        s.commit()
+        if isinstance(e, IANonConfiguree):
+            raise ErreurApi(503, "ia_image_non_configuree", e.message) from e
+        if isinstance(e, IAIndisponible):
+            raise ErreurApi(503, "ia_image_indisponible", nano_banana.MESSAGE_INDISPONIBLE) from e
+        raise ErreurApi(502, "rendu_invalide", e.message) from e
+    try:
+        jpeg = images.ajouter_mention(rendu.image)
+    except Exception as e:
+        raise ErreurApi(502, "rendu_invalide", "Le service d'images a renvoyé une image illisible.") from e
+
+    dossier = Path(cfg.stockage_rendus) / str(p.id)
+    dossier.mkdir(parents=True, exist_ok=True)
+    chemin = dossier / f"{uuid.uuid4().hex}.jpg"
+    chemin.write_bytes(jpeg)
+    r = Rendu(projet_id=p.id, utilisateur_id=u.id, style=d.style, chemin_fichier=str(chemin), prompt=rendu.prompt,
+              modele=rendu.modele)
+    s.add(r)
+    journal.ajouter("rendre", {"style": d.style}, f"image {len(jpeg)} octets", rendu.modele, debut)
+    s.execute(update(Projet).where(Projet.id == p.id)
+              .values(journal_ia=[*p.journal_ia, *journal.entrees], modifie_le=Projet.modifie_le))
+    s.commit()
+    return _rendu(r)
+
+
+@app.get("/api/projets/{projet_id}/rendus/{rendu_id}.jpg", tags=["rendus"])
+def image_rendu(projet_id: int, rendu_id: int, u: Utilisateur = Depends(utilisateur_courant),
+                s: Session = Depends(stockage.session)) -> FileResponse:
+    p = _charger(s, projet_id, u)
+    r = s.get(Rendu, rendu_id)
+    if r is None or r.projet_id != p.id or not Path(r.chemin_fichier).is_file():
+        raise ErreurApi(404, "rendu_introuvable", "Image introuvable.")
+    return FileResponse(r.chemin_fichier, media_type="image/jpeg",
+                        headers={"Cache-Control": "private, max-age=86400"})
+
+
+@app.delete("/api/projets/{projet_id}/rendus/{rendu_id}", tags=["rendus"], status_code=204)
+def supprimer_rendu(projet_id: int, rendu_id: int, u: Utilisateur = Depends(utilisateur_courant),
+                    s: Session = Depends(stockage.session)) -> Response:
+    p = _charger(s, projet_id, u, ecriture=True)
+    r = s.get(Rendu, rendu_id)
+    if r is None or r.projet_id != p.id:
+        raise ErreurApi(404, "rendu_introuvable", "Image introuvable.")
+    Path(r.chemin_fichier).unlink(missing_ok=True)
+    s.delete(r)
+    s.commit()
+    return Response(status_code=204)
 
 
 # ---------------------------------------------------------------------------

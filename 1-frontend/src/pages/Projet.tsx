@@ -15,6 +15,7 @@ const Structure = lazy(() => import("../components/Structure"));
 const Toiture = lazy(() => import("../components/Toiture"));
 const Solaire = lazy(() => import("../components/Solaire"));
 const Metre = lazy(() => import("../components/Metre"));
+const RendusIA = lazy(() => import("../components/RendusIA"));
 
 const ONGLETS = [
   { id: "plan", libelle: "Plan" },
@@ -25,6 +26,7 @@ const ONGLETS = [
   { id: "solaire", libelle: "Solaire" },
   { id: "metre", libelle: "Métré & devis" },
   { id: "validation", libelle: "Validation" },
+  { id: "rendus", libelle: "Rendus IA" },
 ] as const;
 type Onglet = (typeof ONGLETS)[number]["id"];
 
@@ -204,6 +206,7 @@ export default function Projet({ id, onglet, utilisateur }: Props) {
               {actif === "toiture" && <Toiture projet={projet} />}
               {actif === "solaire" && <Solaire projet={projet} />}
               {actif === "metre" && <Metre projet={projet} enCours={enCours} onRecalculer={peutModifier ? () => recalculer(projet.programme) : undefined} />}
+              {actif === "rendus" && <RendusIA projet={projet} peutModifier={peutModifier} />}
               {actif === "validation" && <OngletValidation projet={projet} utilisateur={utilisateur} onSigne={charger} />}
             </Suspense>
           </div>

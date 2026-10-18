@@ -14,6 +14,7 @@ Chaque choix non couvert par le cahier des charges est noté ici (option la plus
 | 6 | fait — connecteurs Claude et Nano Banana testés avec réponses simulées ; pipeline complet (interprétation, auto-correction, refus des champs interdits, secours sans clé) ; `/expliquer` |
 | 7 | fait — écrans connexion, projets, projet (barre IA, onglets Plan, Programme, Électricité, Validation) ; e2e Playwright texte → plan → export SVG, sur bureau et téléphone ; captures `docs/captures/lot7-*` |
 | 8 | fait — onglets Structure (plan de fondations), Toiture, Solaire, Métré & devis (export CSV), page Administration (prix, rôles, n° d'ordre) ; e2e : l'admin change un prix et le devis le reprend |
+| 9 | fait — connecteur branché : plan rasterisé en PNG 2048 px dans le navigateur, `POST/GET /rendus`, quota journalier, bandeau « non contractuelle » ajouté par Pillow, galerie ; e2e avec service simulé |
 
 ## Décisions
 
@@ -182,3 +183,18 @@ version des moteurs, les signatures restent valides.
 ### D-029 — Export du métré avant le lot 10
 L'onglet Métré exporte un CSV (séparateur « ; », virgule décimale, BOM UTF-8 pour Excel) en attendant le classeur
 XLSX du lot 10.
+
+### D-030 — Stockage et accès des rendus
+Les images sont enregistrées sur disque (`STOCKAGE_RENDUS/{projet}/{uuid}.jpg`, volume Docker en production) ;
+S3 n'est pas branché. Elles sont servies par `GET /api/projets/{id}/rendus/{n}.jpg` avec le jeton (l'interface
+les charge en blob). Supprimer un projet supprime ses fichiers. Tout utilisateur qui peut lire le projet peut
+demander un rendu (le quota est par utilisateur) ; seuls le propriétaire et l'admin suppriment.
+
+### D-031 — Mention non contractuelle
+Le bandeau est ajouté sous l'image (l'image n'est pas recouverte), en IBM Plex Mono (licence OFL, fournie dans
+`app/rendu/polices/`) car la police par défaut de Pillow n'a pas les accents. Sur une image étroite, la mention
+passe à la ligne au lieu d'être tronquée. L'interface la répète sous chaque vignette.
+
+### D-032 — Quota et échecs
+Seuls les rendus réussis comptent dans le quota (`RENDUS_MAX_PAR_JOUR`, jour UTC). Un échec du service est
+journalisé dans le journal IA avec `erreur: true` et renvoie le message du § 8.

@@ -193,3 +193,19 @@ textarea { resize: vertical; width: 100%; }
 .onglet-module .plan-cadre { height: min(60vh, 600px); }
 .champ-recherche input { min-width: 220px; }
 @media (max-width: 760px) { .champ-recherche, .champ-recherche input { width: 100%; } }
+
+/* Rendus IA (lot 9) */
+.avertissement-rendu { margin: 6px 0 10px; color: var(--avert); }
+.styles-rendu { border: none; padding: 0; margin: 0 0 10px; display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.styles-rendu legend { font-weight: 500; margin-bottom: 6px; }
+.carte-style { display: grid; gap: 2px; padding: 10px 12px; border: 1px solid var(--bordure); border-radius: 8px; cursor: pointer; background: var(--surface); }
+.carte-style input { position: absolute; opacity: 0; pointer-events: none; }
+.carte-style.actif { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.carte-style:focus-within { outline: 3px solid var(--accent); outline-offset: 2px; }
+.galerie { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.vignette-rendu { margin: 0; background: var(--surface); border: 1px solid var(--bordure); border-radius: 10px; overflow: hidden; }
+.vignette-rendu img { width: 100%; height: auto; display: block; background: var(--fond); }
+.vignette-rendu figcaption { padding: 10px 12px; }
+.vignette-rendu .actions { margin-top: 6px; }
+.vignette-vide { aspect-ratio: 16 / 9; display: grid; place-items: center; color: var(--texte-2); }
+.mention-rendu { margin-top: 4px; font-size: 0.8rem; font-weight: 500; color: var(--avert); }
