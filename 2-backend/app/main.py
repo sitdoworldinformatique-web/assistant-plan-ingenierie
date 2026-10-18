@@ -174,16 +174,27 @@ def interpreter(d: schemas.DemandeInterpreter, _u: Utilisateur = Depends(utilisa
 
 
 @app.post("/api/projets/generer", tags=["projets"], status_code=201)
-def generer(d: schemas.DemandeGenerer, u: Utilisateur = Depends(utilisateur_courant),
+def generer(d: schemas.DemandeGenerer, reponse: Response, u: Utilisateur = Depends(utilisateur_courant),
             s: Session = Depends(stockage.session), client=Depends(ia.client_texte)) -> dict:
     if not d.texte and d.programme is None:
         raise ErreurApi(422, "donnees_invalides", "Fournissez une description (texte) ou un programme.")
+    existant = _charger(s, d.projet_id, u, ecriture=True) if d.projet_id is not None else None
     res = orchestrateur.generer(d.texte, d.programme, client, stockage.table_prix(s))
-    nom = d.nom or (d.texte or "").strip().split(",")[0][:80] or res["programme"].nom
-    p = Projet(proprietaire_id=u.id, nom=nom, texte_initial=d.texte or "", remarques=res["remarques"],
-               journal_ia=res["journal_ia"])
+    if existant is not None:
+        p = existant
+        if d.nom:
+            p.nom = d.nom
+        p.texte_initial = d.texte or p.texte_initial
+        p.remarques = res["remarques"]
+        p.journal_ia = [*p.journal_ia, *res["journal_ia"]]
+        p.version += 1
+        reponse.status_code = 200
+    else:
+        nom = d.nom or (d.texte or "").strip().split(",")[0][:80] or res["programme"].nom
+        p = Projet(proprietaire_id=u.id, nom=nom, texte_initial=d.texte or "", remarques=res["remarques"],
+                   journal_ia=res["journal_ia"])
+        s.add(p)
     _appliquer(p, res)
-    s.add(p)
     s.commit()
     return {**_detail(s, p), "corrections": res["corrections"]}
 

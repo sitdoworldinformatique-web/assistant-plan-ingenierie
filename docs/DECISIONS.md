@@ -12,6 +12,7 @@ Chaque choix non couvert par le cahier des charges est noté ici (option la plus
 | 4 | fait — structure, toiture, solaire, métré, règles ; formules vérifiées par des valeurs calculées à la main |
 | 5 | fait — API, stockage, auth JWT, validations liées à l'empreinte ; parcours générer → modifier → valider → modifier testé |
 | 6 | fait — connecteurs Claude et Nano Banana testés avec réponses simulées ; pipeline complet (interprétation, auto-correction, refus des champs interdits, secours sans clé) ; `/expliquer` |
+| 7 | fait — écrans connexion, projets, projet (barre IA, onglets Plan, Programme, Électricité, Validation) ; e2e Playwright texte → plan → export SVG, sur bureau et téléphone ; captures `docs/captures/lot7-*` |
 
 ## Décisions
 
@@ -150,3 +151,24 @@ Styles : `plan_meuble`, `iso_coupe`, `facade`, `perspective`.
 
 ### D-023 — Dates en UTC explicite
 SQLite rend les dates sans fuseau ; l'API les renvoie toujours avec `+00:00`.
+
+### D-024 — Relancer la génération sur un projet existant
+`POST /api/projets/generer` accepte `projet_id` : la barre IA d'un projet existant relance tout le pipeline
+(interprétation, calcul, auto-correction) sur ce projet au lieu d'en créer un nouveau. La version est incrémentée,
+le journal IA est complété et les signatures existantes deviennent caduques (l'empreinte change).
+
+### D-025 — Interface sans bibliothèque de routage ni de composants
+Navigation par fragment (`#/projets/12/electricite`), état local React, CSS maison à variables. Bundle initial
+≈ 50 Ko gzip, chaque onglet chargé à la demande. Les calques du plan sont redemandés au serveur (le placement des
+étiquettes dépend des calques affichés) et mis en cache côté navigateur ; le calque `mobilier`, encore vide,
+n'est pas proposé. Les lectures sont retentées 2 fois sur coupure réseau ; les écritures ne le sont pas
+(pas de double création), l'erreur est affichée avec un bouton « Réessayer ».
+
+### D-026 — « Bon pour exécution » avant le lot 10
+Le bouton est désactivé tant que les six modules ne sont pas tous signés. En attendant le dossier PDF du lot 10,
+il télécharge le rapport texte.
+
+### D-027 — Tests e2e
+Playwright lance l'API (SQLite jetable, sans clé IA) et Vite ; le parcours tourne sur un écran de bureau et un
+téléphone (Pixel 7). `E2E_PYTHON` désigne l'interpréteur Python qui a les dépendances du backend.
+`CAPTURES=1 npx playwright test captures` régénère les captures de revue visuelle.

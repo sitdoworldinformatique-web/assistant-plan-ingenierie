@@ -221,3 +221,17 @@ def test_clients_ia_selon_les_cles(monkeypatch):
     texte, image = ia.client_texte(), ia.client_image()
     assert texte.modele == "claude-test" and image.modele == "gemini-nano-banana-2.1"
     assert "sk-ant-test" not in repr(texte) and "AIza-test" not in repr(image)
+
+
+def test_regenerer_un_projet_existant(client, comptes):
+    c = comptes["constructeur"]
+    p = client.post("/api/projets/generer", json={"texte": "Villa 3 chambres, terrain 18 m sur 20 m"}, headers=c).json()
+    r = client.post("/api/projets/generer", json={"texte": "Villa 2 chambres, terrain 18 m sur 20 m",
+                                                  "projet_id": p["id"]}, headers=c)
+    assert r.status_code == 200
+    q = r.json()
+    assert q["id"] == p["id"] and q["version"] == 2 and q["programme"]["chambres"] == 2
+    assert q["empreinte"] != p["empreinte"] and len(q["journal_ia"]) == 2
+    assert len(client.get("/api/projets", headers=c).json()) == 1
+    r = client.post("/api/projets/generer", json={"texte": "x", "projet_id": p["id"]}, headers=comptes["ingenieur"])
+    assert r.status_code == 403

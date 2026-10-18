@@ -40,6 +40,7 @@ pytest -q
 npm install && npm run dev      # http://localhost:5173
 npm test                        # Vitest
 npm run build
+E2E_PYTHON=python3 npx playwright test   # e2e : texte → plan → export SVG
 
 # Tout en Docker (depuis 3-connecteurs-deploiement/)
 docker compose up --build       # frontend :5173, API :8000/api/sante

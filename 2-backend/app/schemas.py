@@ -39,6 +39,7 @@ class DemandeGenerer(BaseModel):
     texte: str | None = Field(None, max_length=5000)
     programme: Programme | None = None
     nom: str | None = Field(None, max_length=255)
+    projet_id: int | None = Field(None, description="Relance le pipeline sur un projet existant (validations annulées)")
 
 
 class DemandeValidation(BaseModel):
