@@ -15,6 +15,7 @@ Chaque choix non couvert par le cahier des charges est noté ici (option la plus
 | 7 | fait — écrans connexion, projets, projet (barre IA, onglets Plan, Programme, Électricité, Validation) ; e2e Playwright texte → plan → export SVG, sur bureau et téléphone ; captures `docs/captures/lot7-*` |
 | 8 | fait — onglets Structure (plan de fondations), Toiture, Solaire, Métré & devis (export CSV), page Administration (prix, rôles, n° d'ordre) ; e2e : l'admin change un prix et le devis le reprend |
 | 9 | fait — connecteur branché : plan rasterisé en PNG 2048 px dans le navigateur, `POST/GET /rendus`, quota journalier, bandeau « non contractuelle » ajouté par Pillow, galerie ; e2e avec service simulé |
+| 10 | fait — `plan.dxf` (ezdxf, calques MURS/PORTES/FENETRES/COTES/TEXTES/ELEC/STRUCTURE, unité cm), `dossier.pdf` (A4 paysage, plan à l'échelle avec cartouche, puis synthèse, contrôles, électricité, structure, toiture/solaire, métré, hypothèses), `metre.xlsx` (formules) ; boutons d'export et e2e de téléchargement |
 
 ## Décisions
 
@@ -198,3 +199,21 @@ passe à la ligne au lieu d'être tronquée. L'interface la répète sous chaque
 ### D-032 — Quota et échecs
 Seuls les rendus réussis comptent dans le quota (`RENDUS_MAX_PAR_JOUR`, jour UTC). Un échec du service est
 journalisé dans le journal IA avec `erreur: true` et renvoie le message du § 8.
+
+### D-033 — DXF en centimètres, vérifié sans LibreOffice
+Le plan est construit en mètres puis mis à l'échelle ×100 : une unité du DXF = 1 cm, comme le plan SVG (`INSUNITS` = cm,
+`LTSCALE` 20, axe Y inversé pour garder le nord en haut). Contrôle : `ezdxf` audit sans erreur, relecture du fichier et
+comparaison des murs, portes et circuits au moteur (`test_exports.py`), rendu SVG via le moteur de dessin d'`ezdxf`
+(géométrie correcte). L'import DXF de LibreOffice en ligne de commande produit une page blanche même pour un fichier
+d'essai minimal généré par `ezdxf` : ce n'est pas un défaut de notre export, il n'est pas utilisé comme critère.
+
+### D-034 — PDF : police Helvetica, échelle normalisée, mention
+Le PDF utilise les polices standard (Helvetica, cp1252) pour rester léger ; `ascii_pdf` remplace les symboles absents
+(Ω, σ, Δ, ≤, →…). Le plan est dessiné à 1:100 s'il tient sur la page, sinon à l'échelle normalisée inférieure
+(1:200, 1:500), avec cartouche, flèche du nord et échelle graphique. Le pied de page porte « À valider par un ingénieur
+qualifié · document non contractuel » tant que les six modules ne sont pas signés (D-026) ; « Bon pour exécution »
+télécharge ce même PDF.
+
+### D-035 — XLSX avec formules
+Le métré est exporté avec de vraies formules (`=D*E`, `=SUM`, total) et recalcul à l'ouverture ; un test recalcule le
+fichier avec LibreOffice et le compare au total du moteur. Feuilles : Métré, Quantités, Hypothèses.

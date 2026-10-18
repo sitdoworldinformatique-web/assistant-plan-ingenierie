@@ -1,4 +1,5 @@
 import { nombre } from "../lib/format";
+import { api } from "../api/client";
 import { nomFichier, telecharger } from "../lib/telecharger";
 import type { LigneMetre, Projet } from "../types";
 import ModuleEtat from "./ModuleEtat";
@@ -32,6 +33,9 @@ export default function Metre({ projet, enCours, onRecalculer }: { projet: Proje
             )}
             <button className="bouton" onClick={() => telecharger(versCsv(m.lignes, m.total, m.devise), nomFichier(projet.nom + "-metre", "csv"), "text/csv;charset=utf-8")}>
               Exporter (CSV)
+            </button>
+            <button className="bouton" onClick={async () => telecharger(await api.exporter(projet.id, "metre.xlsx"), nomFichier(projet.nom + "-metre", "xlsx"))}>
+              Exporter (XLSX)
             </button>
           </div>
         </div>

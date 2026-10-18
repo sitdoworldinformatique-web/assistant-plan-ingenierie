@@ -27,7 +27,7 @@ from app.moteurs import chaine
 from app.moteurs.normes import VERSION_MOTEURS
 from app.moteurs.programme import Programme
 from app.moteurs.regles import MODULES
-from app.rendu import images, plan_svg, rapport, unifilaire
+from app.rendu import dxf, images, pdf, plan_svg, rapport, unifilaire, xlsx
 from app.stockage import PrixMateriau, Projet, Rendu, Utilisateur, Validation
 
 log = logging.getLogger("api")
@@ -291,6 +291,43 @@ def rapport_txt(projet_id: int, u: Utilisateur = Depends(utilisateur_courant),
     valides = [v for v in _validations(s, p) if v["encore_valide"]]
     texte = rapport.rendre(_detail(s, p), valides)
     return PlainTextResponse(texte, headers={"Content-Disposition": f'attachment; filename="rapport-{p.id}.txt"'})
+
+
+def _signes(s: Session, p: Projet) -> list[dict]:
+    return [v for v in _validations(s, p) if v["encore_valide"]]
+
+
+@app.get("/api/projets/{projet_id}/plan.dxf", tags=["exports"])
+def plan_dxf(projet_id: int, u: Utilisateur = Depends(utilisateur_courant),
+             s: Session = Depends(stockage.session)) -> Response:
+    p = _charger(s, projet_id, u)
+    r = chaine.Resultats.model_validate(p.resultats)
+    contenu = dxf.exporter(r.implantation, nom_projet=p.nom, statut=_statut_cartouche(s, p),
+                           elec=r.electricite.model_dump(), structure=r.structure.model_dump())
+    return Response(contenu, media_type="application/dxf",
+                    headers={"Content-Disposition": f'attachment; filename="plan-{p.id}.dxf"'})
+
+
+@app.get("/api/projets/{projet_id}/dossier.pdf", tags=["exports"])
+def dossier_pdf(projet_id: int, u: Utilisateur = Depends(utilisateur_courant),
+                s: Session = Depends(stockage.session)) -> Response:
+    p = _charger(s, projet_id, u)
+    r = chaine.Resultats.model_validate(p.resultats)
+    contenu = pdf.rendre({"nom": p.nom, "version": p.version, "empreinte": p.empreinte,
+                          "modifie_le": _iso(p.modifie_le), "version_moteurs": p.version_moteurs}, r, _signes(s, p))
+    return Response(contenu, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="dossier-{p.id}.pdf"'})
+
+
+@app.get("/api/projets/{projet_id}/metre.xlsx", tags=["exports"])
+def metre_xlsx(projet_id: int, u: Utilisateur = Depends(utilisateur_courant),
+               s: Session = Depends(stockage.session)) -> Response:
+    p = _charger(s, projet_id, u)
+    r = chaine.Resultats.model_validate(p.resultats)
+    signes = {v["module"] for v in _signes(s, p)}
+    contenu = xlsx.rendre(p.nom, r, all(m in signes for m in MODULES))
+    return Response(contenu, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={"Content-Disposition": f'attachment; filename="metre-{p.id}.xlsx"'})
 
 
 # ---------------------------------------------------------------------------

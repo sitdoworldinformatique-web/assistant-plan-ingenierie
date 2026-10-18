@@ -111,6 +111,14 @@ export default function Projet({ id, onglet, utilisateur }: Props) {
       setErreur(e instanceof ErreurApi ? e.message : "Export impossible.");
     }
   };
+  const exporterFichier = async (fichier: "plan.dxf" | "dossier.pdf" | "metre.xlsx", suffixe: string) => {
+    if (!projet) return;
+    try {
+      telecharger(await api.exporter(projet.id, fichier), nomFichier(projet.nom + suffixe, fichier.split(".")[1]));
+    } catch (e) {
+      setErreur(e instanceof ErreurApi ? e.message : "Export impossible.");
+    }
+  };
   const exporterRapport = async () => {
     if (!projet) return;
     try {
@@ -145,13 +153,19 @@ export default function Projet({ id, onglet, utilisateur }: Props) {
             <button className="bouton" onClick={exporterPlan}>
               Exporter le plan (SVG)
             </button>
+            <button className="bouton" onClick={() => exporterFichier("plan.dxf", "")}>
+              Plan DXF
+            </button>
+            <button className="bouton" onClick={() => exporterFichier("dossier.pdf", "-dossier")}>
+              Dossier PDF
+            </button>
             <button className="bouton" onClick={exporterRapport}>
               Rapport (TXT)
             </button>
             <button
               className="bouton bouton-principal"
               disabled={!tousSignes}
-              onClick={exporterRapport}
+              onClick={() => exporterFichier("dossier.pdf", "-bon-pour-execution")}
               title={tousSignes ? "Tous les modules sont signés" : "Disponible quand tous les modules sont signés par un ingénieur"}
             >
               Bon pour exécution

@@ -119,6 +119,8 @@ export const api = {
   planSvg: (id: number, calques: string[]) =>
     requete<string>(`/api/projets/${id}/plan.svg?calques=${calques.join(",")}`, { format: "texte" }),
   unifilaireSvg: (id: number) => requete<string>(`/api/projets/${id}/unifilaire.svg`, { format: "texte" }),
+  exporter: (id: number, fichier: "plan.dxf" | "dossier.pdf" | "metre.xlsx") =>
+    requete<Blob>(`/api/projets/${id}/${fichier}`, { format: "blob" }),
   rapport: (id: number) => requete<string>(`/api/projets/${id}/rapport.txt`, { format: "texte" }),
   expliquer: (id: number, element_id: string) =>
     requete<{ element_id: string; texte: string; source: "ia" | "regles" }>(`/api/projets/${id}/expliquer`, {
