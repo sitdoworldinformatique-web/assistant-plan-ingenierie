@@ -24,7 +24,7 @@ test("captures des écrans du lot 7", async ({ page }, info) => {
   await page.screenshot({ path: `${dossier}/lot7-plan-${nom}-sombre.png`, fullPage: true });
   await page.emulateMedia({ colorScheme: "light" });
   const url = page.url().replace(/\/plan$/, "");
-  for (const onglet of ["electricite", "validation", "programme"]) {
+  for (const onglet of ["electricite", "validation", "programme", "structure", "toiture", "solaire", "metre"]) {
     await page.goto(`${url}/${onglet}`);
     await page.waitForLoadState("networkidle");
     if (onglet === "validation") await page.getByRole("button", { name: "Expliquer" }).first().click();

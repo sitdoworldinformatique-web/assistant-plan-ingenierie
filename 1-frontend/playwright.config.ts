@@ -26,7 +26,7 @@ export default defineConfig({
         DATABASE_URL: base,
         ANTHROPIC_API_KEY: "",
         GEMINI_API_KEY: "",
-        ADMIN_EMAIL: "",
+        ADMIN_EMAIL: "admin-e2e@exemple.cd",
       },
       reuseExistingServer: false,
       timeout: 60_000,

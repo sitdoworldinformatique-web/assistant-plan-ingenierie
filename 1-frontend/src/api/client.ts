@@ -1,6 +1,6 @@
 // Client de l'API : jeton JWT, erreurs {code, message} en français, reprise sur coupure réseau.
 
-import type { Module, Programme, Projet, ResumeProjet, Sante, Utilisateur, Validation } from "../types";
+import type { Module, PrixMateriau, Programme, Projet, ResumeProjet, Role, Sante, Utilisateur, Validation } from "../types";
 
 const CLE_JETON = "api.jeton";
 
@@ -127,6 +127,12 @@ export const api = {
     }),
   validations: (id: number) =>
     requete<{ validations: Validation[]; modules: Record<Module, boolean> }>(`/api/projets/${id}/validations`),
+  prix: () => requete<PrixMateriau[]>("/api/admin/prix"),
+  modifierPrix: (entrees: { code: string; prix: number; libelle?: string; unite?: string; devise?: string }[]) =>
+    requete<PrixMateriau[]>("/api/admin/prix", { methode: "PUT", corps: entrees }),
+  utilisateurs: () => requete<Utilisateur[]>("/api/admin/utilisateurs"),
+  modifierUtilisateur: (id: number, role: Role, numero_ordre: string | null) =>
+    requete<Utilisateur>(`/api/admin/utilisateurs/${id}`, { methode: "PUT", corps: { role, numero_ordre } }),
   valider: (id: number, module: Module, commentaire: string) =>
     requete<Validation>(`/api/projets/${id}/validations`, { methode: "POST", corps: { module, commentaire } }),
 };

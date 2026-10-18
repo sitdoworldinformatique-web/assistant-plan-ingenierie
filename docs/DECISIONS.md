@@ -13,6 +13,7 @@ Chaque choix non couvert par le cahier des charges est noté ici (option la plus
 | 5 | fait — API, stockage, auth JWT, validations liées à l'empreinte ; parcours générer → modifier → valider → modifier testé |
 | 6 | fait — connecteurs Claude et Nano Banana testés avec réponses simulées ; pipeline complet (interprétation, auto-correction, refus des champs interdits, secours sans clé) ; `/expliquer` |
 | 7 | fait — écrans connexion, projets, projet (barre IA, onglets Plan, Programme, Électricité, Validation) ; e2e Playwright texte → plan → export SVG, sur bureau et téléphone ; captures `docs/captures/lot7-*` |
+| 8 | fait — onglets Structure (plan de fondations), Toiture, Solaire, Métré & devis (export CSV), page Administration (prix, rôles, n° d'ordre) ; e2e : l'admin change un prix et le devis le reprend |
 
 ## Décisions
 
@@ -172,3 +173,12 @@ il télécharge le rapport texte.
 Playwright lance l'API (SQLite jetable, sans clé IA) et Vite ; le parcours tourne sur un écran de bureau et un
 téléphone (Pixel 7). `E2E_PYTHON` désigne l'interpréteur Python qui a les dépendances du backend.
 `CAPTURES=1 npx playwright test captures` régénère les captures de revue visuelle.
+
+### D-028 — Prix modifiés et projets existants
+Le métré d'un projet garde les prix du moment de son calcul. Le bouton « Appliquer les prix actuels » de l'onglet
+Métré recalcule le projet avec la table de prix courante ; l'empreinte ne dépendant que du programme et de la
+version des moteurs, les signatures restent valides.
+
+### D-029 — Export du métré avant le lot 10
+L'onglet Métré exporte un CSV (séparateur « ; », virgule décimale, BOM UTF-8 pour Excel) en attendant le classeur
+XLSX du lot 10.

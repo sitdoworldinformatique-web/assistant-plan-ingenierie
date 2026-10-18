@@ -11,11 +11,19 @@ const OngletPlan = lazy(() => import("../components/OngletPlan"));
 const ProgrammeForm = lazy(() => import("../components/ProgrammeForm"));
 const Electricite = lazy(() => import("../components/Electricite"));
 const OngletValidation = lazy(() => import("../components/OngletValidation"));
+const Structure = lazy(() => import("../components/Structure"));
+const Toiture = lazy(() => import("../components/Toiture"));
+const Solaire = lazy(() => import("../components/Solaire"));
+const Metre = lazy(() => import("../components/Metre"));
 
 const ONGLETS = [
   { id: "plan", libelle: "Plan" },
   { id: "programme", libelle: "Programme" },
   { id: "electricite", libelle: "Électricité" },
+  { id: "structure", libelle: "Structure" },
+  { id: "toiture", libelle: "Toiture" },
+  { id: "solaire", libelle: "Solaire" },
+  { id: "metre", libelle: "Métré & devis" },
   { id: "validation", libelle: "Validation" },
 ] as const;
 type Onglet = (typeof ONGLETS)[number]["id"];
@@ -192,6 +200,10 @@ export default function Projet({ id, onglet, utilisateur }: Props) {
                   onLongueurs={(l) => recalculer({ ...projet.programme, longueurs_circuits: l })}
                 />
               )}
+              {actif === "structure" && <Structure projet={projet} />}
+              {actif === "toiture" && <Toiture projet={projet} />}
+              {actif === "solaire" && <Solaire projet={projet} />}
+              {actif === "metre" && <Metre projet={projet} enCours={enCours} onRecalculer={peutModifier ? () => recalculer(projet.programme) : undefined} />}
               {actif === "validation" && <OngletValidation projet={projet} utilisateur={utilisateur} onSigne={charger} />}
             </Suspense>
           </div>

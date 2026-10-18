@@ -8,6 +8,7 @@ import type { Utilisateur } from "./types";
 // Les pages lourdes sont chargées à la demande (connexions lentes)
 const Projets = lazy(() => import("./pages/Projets"));
 const Projet = lazy(() => import("./pages/Projet"));
+const Admin = lazy(() => import("./pages/Admin"));
 
 function lireTheme(): string | null {
   try {
@@ -72,6 +73,11 @@ export default function App() {
           <span className="marque-logo" aria-hidden="true">◧</span> Assistant Plan Ingénierie
         </a>
         <nav className="barre-haut-actions">
+          {utilisateur.role === "admin" && (
+            <a className="bouton bouton-discret" href="#/admin">
+              Administration
+            </a>
+          )}
           <span className="utilisateur" title={utilisateur.email}>
             {utilisateur.nom} · <span className="role">{utilisateur.role}</span>
           </span>
@@ -86,6 +92,8 @@ export default function App() {
       <Suspense fallback={<Chargement />}>
         {route.page === "projet" ? (
           <Projet key={route.id} id={route.id} onglet={route.onglet} utilisateur={utilisateur} />
+        ) : route.page === "admin" ? (
+          <Admin utilisateur={utilisateur} />
         ) : route.page === "nouveau" ? (
           <Projet key="nouveau" utilisateur={utilisateur} />
         ) : (

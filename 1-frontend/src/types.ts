@@ -131,14 +131,109 @@ export interface Bilan {
   branchement: number;
 }
 
-// Résultats des modules suivis seulement en partie côté interface (le reste est affiché tel quel)
+export interface Semelle {
+  id: string;
+  mur_id: string;
+  longueur: number;
+  largeur_reprise: number;
+  q_mur: number;
+  q_chainage: number;
+  q_toiture: number;
+  q_els: number;
+  largeur: number;
+  hauteur: number;
+  ferraillage: string;
+}
+
+export interface Poteau {
+  id: string;
+  x: number;
+  y: number;
+  section: string;
+  armatures: string;
+  cadres: string;
+  motif: string;
+}
+
+export interface Chainage {
+  id: string;
+  type: string;
+  reference: string;
+  longueur: number;
+  section: string;
+}
+
+export interface Structure {
+  semelles: Semelle[];
+  poteaux: Poteau[];
+  chainages: Chainage[];
+  dallage: { surface: number; epaisseur: number; herisson: number; treillis: string; volume_beton: number };
+  hauteur_mur: number;
+}
+
+export interface Toiture {
+  type: string;
+  couverture: string;
+  pente: number;
+  surface_plan: number;
+  surface: number;
+  debord: number;
+  fermes: number;
+  longueur_fermes_ml: number;
+  pannes_ml: number;
+  liteaux_ml: number;
+  aretiers_ml: number;
+  faitage_ml: number;
+  charpente_ml: number;
+  gouttieres: number;
+  descentes: number;
+  dalle_volume: number;
+  acrotere_ml: number;
+}
+
+export interface Solaire {
+  demande: boolean;
+  charges_essentielles_w: number;
+  onduleur_kva: number;
+  batteries_kwh: number;
+  energie_jour_kwh: number;
+  panneaux_kwc: number;
+}
+
+export interface LigneMetre {
+  lot: string;
+  code: string;
+  poste: string;
+  quantite: number;
+  unite: string;
+  prix_unitaire: number;
+  total: number;
+}
+
+export interface Metre {
+  lignes: LigneMetre[];
+  total: number;
+  devise: string;
+  mention_prix: string;
+  quantites: Record<string, number>;
+}
+
+export interface PrixMateriau {
+  code: string;
+  libelle: string;
+  unite: string;
+  prix: number;
+  devise: string;
+  mis_a_jour_le: string;
+}
+
 export interface Resultats {
   implantation: { pieces: Piece[]; emprise: Record<string, unknown>; parametres: Record<string, unknown> };
-  electricite: { circuits: Circuit[]; differentiels: Differentiel[]; bilan: Bilan };
-  structure: Record<string, unknown>;
-  toiture: Record<string, unknown>;
-  solaire: Record<string, unknown>;
-  metre: Record<string, unknown>;
+  electricite: { circuits: Circuit[]; differentiels: Differentiel[]; bilan: Bilan; points: { piece_id: string; type: string }[] };
+  structure: Structure;
+  toiture: Toiture;
+  solaire: Solaire;
+  metre: Metre;
   controles: Controle[];
   hypotheses: Hypothese[];
   statut: Statut;

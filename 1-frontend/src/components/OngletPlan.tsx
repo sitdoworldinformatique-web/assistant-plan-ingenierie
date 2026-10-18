@@ -61,7 +61,7 @@ export default function OngletPlan({ projet }: { projet: Projet }) {
 
   const piece = projet.resultats.implantation.pieces.find((p) => p.id === selection);
   const points = piece
-    ? (projet.resultats.electricite as unknown as { points: { piece_id: string; type: string }[] }).points?.filter((p) => p.piece_id === piece.id) ?? []
+    ? projet.resultats.electricite.points?.filter((p) => p.piece_id === piece.id) ?? []
     : [];
   const compte = points.reduce<Record<string, number>>((acc, p) => ({ ...acc, [p.type]: (acc[p.type] ?? 0) + 1 }), {});
 
