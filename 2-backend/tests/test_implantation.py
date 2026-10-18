@@ -200,8 +200,12 @@ def test_etiquettes_sans_chevauchement(prog):
         assert not a.boite.chevauche(b.boite), (a.piece_id, b.piece_id)
 
 
-def test_golden_cas_reference(ref):
-    svg = _svg(ref)
+def test_golden_cas_reference(programme_ref):
+    from app.moteurs import chaine
+
+    r = chaine.calculer(programme_ref)
+    svg = _svg(r.implantation, elec=r.electricite.model_dump(), structure=r.structure.model_dump(),
+               calques=plan_svg.CALQUES)
     if os.getenv("MAJ_GOLDEN") or not GOLDEN.exists():
         GOLDEN.write_text(svg, encoding="utf-8")
     assert svg == GOLDEN.read_text(encoding="utf-8"), "Plan modifié : relancer avec MAJ_GOLDEN=1 après revue visuelle"

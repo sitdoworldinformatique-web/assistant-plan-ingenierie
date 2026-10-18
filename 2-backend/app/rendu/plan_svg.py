@@ -17,7 +17,7 @@ from app.moteurs.implantation import EPS, Ouverture, ResultatImplantation
 
 S = 100.0  # unités SVG par mètre
 CALQUES = ("murs", "textes", "cotes", "mobilier", "elec", "structure", "annotations")
-CALQUES_DEFAUT = ("murs", "textes", "cotes", "elec", "structure", "annotations")
+CALQUES_DEFAUT = ("murs", "textes", "cotes", "annotations")
 
 # Tailles en unités SVG (cm réels ; 10 unités = 1 mm papier à 1:100)
 T_NOM, T_SURF, T_DIM, T_COTE, T_CART = 26.0, 22.0, 17.0, 18.0, 22.0

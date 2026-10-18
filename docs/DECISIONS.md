@@ -9,6 +9,7 @@ Chaque choix non couvert par le cahier des charges est noté ici (option la plus
 | 1 | fait — 15 phrases de test interprétées par l'analyseur par règles |
 | 2 | fait — plan coté du cas de référence, golden SVG, captures dans `docs/captures/` |
 | 3 | fait — mêmes circuits que le prototype, vérifié en exécutant son JavaScript (4 variantes) |
+| 4 | fait — structure, toiture, solaire, métré, règles ; formules vérifiées par des valeurs calculées à la main |
 
 ## Décisions
 
@@ -74,3 +75,28 @@ Le WC, le placard et le rangement ne reçoivent pas de prise ; placard et rangem
   chauffe-eau en salle de bains ; climatiseurs dans leur pièce. Elles s'intercalent parmi les prises normales.
 - Prises de la véranda : uniquement contre la façade. Interrupteur du dégagement : à côté de la baie du séjour.
 - Si aucun point d'un circuit n'existe sur le plan, la longueur par défaut est la plus grande longueur calculée.
+
+### D-011 — Structure : murs porteurs et largeurs reprises
+- Semelles filantes sous les murs extérieurs et les refends porteurs ; les cloisons de 10 cm sont posées sur le dallage.
+- 2 pans : les fermes portent de façade à façade ; chaque façade reprend la demi-profondeur + le débord ;
+  les pignons reprennent une demi-travée de fermes (0,60 m). 4 pans : murs latéraux à D/4 + débord.
+  Terrasse : dalle portant dans le sens de la profondeur entre façades et murs du couloir.
+- Le poids propre de la semelle n'est pas ajouté (formule du § 6.4 appliquée telle quelle).
+- Poteaux : à chaque extrémité de mur (angles et jonctions, cloisons comprises) et de part et d'autre
+  des ouvertures de plus de 1,80 m.
+
+### D-012 — Toiture
+Le garage reçoit son propre pan (fermes sur sa profondeur). Bois d'une ferme : 2 arbalétriers + entrait +
+poinçon + contrefiches (≈ un rampant). Terrasse : pas de débord, acrotère sur le périmètre, gouttières nulles.
+
+### D-013 — Métré
+- Fouilles : semelle + 0,30 m de sur-profondeur. Maçonnerie : hauteur = HSP (sous le chaînage), ouvertures déduites.
+- Le béton armé regroupe chaînages, poteaux, linteaux et dalle de toiture ; l'acier de la dalle suit le ratio 120 kg/m³.
+- Ciment et sable comptent aussi le mortier ; le dallage compte dans le béton (ciment, granulats).
+- Carrelage : toutes les surfaces nettes sauf le garage (véranda comprise). Peinture : 2 faces de murs + plafonds.
+- Prix de départ dans `app/moteurs/prix_defaut.py`, en USD, « indicatif — à mettre à jour ».
+  Si le programme demande une autre devise, un avertissement le signale ; aucune conversion n'est faite.
+
+### D-014 — Calques par défaut du plan
+`plan.svg` sans paramètre affiche murs, textes, cotes et annotations ; `elec`, `structure` et `mobilier`
+s'activent par `?calques=`. Le placement des étiquettes tient toujours compte des symboles électriques.
