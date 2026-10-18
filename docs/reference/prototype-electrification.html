@@ -1,0 +1,536 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Module Électrification</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Concept : un tableau électrique. Saisie à gauche, sorties de calcul empilées à droite comme les rangées d'un tableau. */
+:root{
+  --bg:#F1F4F8; --surface:#FFFFFF; --sunk:#E8EDF3; --ink:#16202E; --muted:#5A6676; --line:#D3DAE4;
+  --accent:#1D4F91; --accent-soft:#E2EBF7; --on-accent:#FFFFFF;
+  --ok:#1E7A4C; --ok-soft:#E1F2E8; --warn:#9A5A00; --warn-soft:#FBEFD9; --bad:#B42318; --bad-soft:#FBE3E1;
+  --phase:#7A4A2A; --neutre:#2563B8; --terre:#5E8F1F;
+  --f-display:"IBM Plex Sans Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0E131A; --surface:#161E28; --sunk:#111821; --ink:#E5EBF2; --muted:#98A5B5; --line:#2A3543;
+  --accent:#86B2F0; --accent-soft:#1B2D46; --on-accent:#0E131A;
+  --ok:#5CCB92; --ok-soft:#14302A; --warn:#F0B44C; --warn-soft:#382A12; --bad:#F2786D; --bad-soft:#3C1C1A;
+  --phase:#C99A73; --neutre:#74A6EE; --terre:#9DCB5C; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#0E131A; --surface:#161E28; --sunk:#111821; --ink:#E5EBF2; --muted:#98A5B5; --line:#2A3543;
+  --accent:#86B2F0; --accent-soft:#1B2D46; --on-accent:#0E131A;
+  --ok:#5CCB92; --ok-soft:#14302A; --warn:#F0B44C; --warn-soft:#382A12; --bad:#F2786D; --bad-soft:#3C1C1A;
+  --phase:#C99A73; --neutre:#74A6EE; --terre:#9DCB5C; color-scheme:dark }
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5}
+.wrap{max-width:1360px;margin:0 auto;padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0}
+h1{font-size:1.75rem;font-weight:700;letter-spacing:.01em}
+h2{font-size:1.05rem;font-weight:600;letter-spacing:.02em}
+.eyebrow{font-family:var(--f-display);font-size:.72rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.mono,.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+
+header.top{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between;padding-bottom:16px;border-bottom:2px solid var(--ink);margin-bottom:20px}
+header.top .title{display:grid;gap:4px;min-width:0}
+header.top .proj{font-family:var(--f-body);font-size:.95rem;color:var(--muted)}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+button{font:inherit;font-weight:500;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:7px 12px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.notice{font-size:.82rem;color:var(--muted);background:var(--sunk);border:1px dashed var(--line);border-radius:6px;padding:8px 12px;margin-bottom:20px}
+
+.grid{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:980px){.grid{grid-template-columns:minmax(0,1fr)}}
+.col{display:grid;gap:20px;min-width:0}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;min-width:0}
+.panel>.ph{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.panel>.pb{padding:14px 16px;display:grid;gap:12px;min-width:0}
+
+label{display:grid;gap:4px;font-size:.8rem;color:var(--muted)}
+input[type=text],input[type=number],select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:6px 8px;width:100%;min-width:0}
+input[type=number]{font-family:var(--f-mono)}
+.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+
+.rooms{display:grid;gap:8px}
+.room{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1.3fr) 72px auto auto;gap:6px;align-items:center}
+.room .chk{display:flex;align-items:center;gap:4px;font-size:.78rem;color:var(--muted);white-space:nowrap}
+.room button{padding:5px 8px;color:var(--muted)}
+.rooms-head{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1.3fr) 72px auto auto;gap:6px;font-size:.72rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+@media (max-width:460px){.room,.rooms-head{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 64px}.rooms-head span:nth-child(n+4){display:none}.room .chk{grid-column:1/3}}
+.equip{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px}
+.equip label{display:flex;align-items:center;gap:8px;color:var(--ink);font-size:.86rem}
+@media (max-width:460px){.equip{grid-template-columns:minmax(0,1fr)}}
+
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border:1px solid var(--line);border-radius:8px;background:var(--surface);overflow:hidden}
+.kpi{padding:12px 14px;border-right:1px solid var(--line);display:grid;gap:2px;min-width:0}
+.kpi:last-child{border-right:0}
+.kpi .v{font-family:var(--f-mono);font-size:1.35rem;font-weight:500}
+.kpi .v small{font-size:.75rem;color:var(--muted);margin-left:3px}
+@media (max-width:760px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpi{border-bottom:1px solid var(--line)}.kpi:nth-child(2n){border-right:0}}
+
+.pill{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-display);font-weight:600;font-size:.8rem;letter-spacing:.03em;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.ok{color:var(--ok)} .pill.ok{background:var(--ok-soft)}
+.warn{color:var(--warn)} .pill.warn{background:var(--warn-soft)}
+.bad{color:var(--bad)} .pill.bad{background:var(--bad-soft)}
+
+.tscroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.84rem}
+th{font-family:var(--f-display);font-weight:600;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+td.r,th.r{text-align:right}
+tr.idrow td{background:var(--sunk);font-family:var(--f-display);font-weight:600;font-size:.82rem;letter-spacing:.03em}
+td input[type=number]{width:70px;padding:4px 6px}
+td .det{color:var(--muted);font-size:.78rem;max-width:240px}
+.up{color:var(--warn);font-weight:600}
+
+.unif{overflow-x:auto;background:var(--sunk);border-radius:6px;padding:8px}
+.unif svg{display:block}
+.unif .w-ph{stroke:var(--phase)} .unif .w-n{stroke:var(--neutre)}
+.unif .box{fill:var(--surface);stroke:var(--ink);stroke-width:1.2}
+.unif .boxA{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.4}
+.unif text{fill:var(--ink);font-family:var(--f-mono);font-size:10.5px}
+.unif text.lb{font-family:var(--f-display);font-size:11.5px;font-weight:600}
+.unif text.mu{fill:var(--muted)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:.78rem;color:var(--muted)}
+.legend i{display:inline-block;width:18px;height:3px;vertical-align:middle;margin-right:6px}
+
+.checks{display:grid;gap:6px;list-style:none;margin:0;padding:0}
+.checks li{display:grid;grid-template-columns:4px minmax(0,1fr) auto;gap:12px;align-items:start;padding:8px 10px 8px 0;border-bottom:1px solid var(--line)}
+.checks li:last-child{border-bottom:0}
+.checks .bar{align-self:stretch;border-radius:2px;background:currentColor}
+.checks .t{font-weight:600;font-size:.88rem}
+.checks .d{font-size:.82rem;color:var(--muted)}
+.filters{display:flex;gap:6px;flex-wrap:wrap}
+.filters button{padding:4px 10px;font-size:.8rem}
+.filters button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent);color:var(--ink)}
+
+.sol{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.sol .c{background:var(--sunk);border-radius:6px;padding:10px 12px;display:grid;gap:2px}
+.sol .c .v{font-family:var(--f-mono);font-size:1.15rem}
+@media (max-width:620px){.sol{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+dl.hyp{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 16px;margin:0;font-size:.84rem}
+dl.hyp dt{color:var(--muted)} dl.hyp dd{margin:0;font-family:var(--f-mono);text-align:right}
+
+.sign{display:grid;gap:10px}
+.stamp{border:2px solid var(--ok);color:var(--ok);border-radius:6px;padding:10px 14px;font-family:var(--f-display);font-weight:600;letter-spacing:.04em}
+.stamp.off{border-color:var(--line);color:var(--muted);border-style:dashed}
+.chkline{display:flex;gap:8px;align-items:flex-start;color:var(--ink);font-size:.86rem}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:6px;font-size:.85rem}
+@media (prefers-reduced-motion:no-preference){button{transition:border-color .15s}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="title">
+      <span class="eyebrow">Assistant Plan Ingénierie · Module 1</span>
+      <h1>Électrification du bâtiment</h1>
+      <span class="proj" id="projLabel"></span>
+    </div>
+    <div class="actions">
+      <span id="globalPill"></span>
+      <button id="btnCopy" type="button">Copier le rapport</button>
+      <button id="btnReset" type="button">Recharger l'exemple</button>
+    </div>
+  </header>
+
+  <p class="notice">Prototype de démonstration. Les règles s'inspirent de la NF C 15-100 (logement, monophasé 230 V) et sont simplifiées. Les résultats doivent être vérifiés et signés par un ingénieur qualifié avant exécution. Les données saisies sont un exemple : remplacez-les par votre projet.</p>
+
+  <div class="grid">
+    <div class="col">
+      <section class="panel">
+        <div class="ph"><h2>Projet</h2><span class="eyebrow">Données d'entrée</span></div>
+        <div class="pb">
+          <label for="pNom">Nom du projet<input type="text" id="pNom"></label>
+          <div class="fields">
+            <label for="pLong">Longueur de câble par défaut (m)<input type="number" id="pLong" min="1" step="1"></label>
+            <label for="pTerre">Résistance de terre mesurée (Ω)<input type="number" id="pTerre" min="0" step="1" placeholder="à mesurer"></label>
+            <label for="pAuto">Autonomie de secours souhaitée (h)<input type="number" id="pAuto" min="0" step="1"></label>
+            <label for="pSoleil">Ensoleillement équivalent (h/jour)<input type="number" id="pSoleil" min="1" step="0.5"></label>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="ph"><h2>Pièces</h2><span class="muted num" id="surfTotal"></span></div>
+        <div class="pb">
+          <div class="rooms-head"><span>Nom</span><span>Type</span><span>m²</span><span>Clim</span><span></span></div>
+          <div class="rooms" id="rooms"></div>
+          <div><button type="button" id="btnAdd">Ajouter une pièce</button></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="ph"><h2>Circuits spécialisés</h2><span class="eyebrow">Équipements</span></div>
+        <div class="pb"><div class="equip" id="equip"></div></div>
+      </section>
+    </div>
+
+    <div class="col">
+      <div class="kpis" id="kpis"></div>
+
+      <section class="panel">
+        <div class="ph"><h2>Rapport de validation</h2><div class="filters" id="filters"></div></div>
+        <div class="pb"><ul class="checks" id="checks"></ul></div>
+      </section>
+
+      <section class="panel">
+        <div class="ph"><h2>Circuits et protections</h2><span class="eyebrow">Longueurs modifiables</span></div>
+        <div class="tscroll"><table id="tCircuits"></table></div>
+      </section>
+
+      <section class="panel">
+        <div class="ph"><h2>Schéma unifilaire du tableau</h2><span class="eyebrow">Généré automatiquement</span></div>
+        <div class="pb">
+          <div class="unif" id="unif"></div>
+          <div class="legend"><span><i style="background:var(--phase)"></i>Arrivée et rangées</span><span><i style="background:var(--accent)"></i>Interrupteur différentiel type A</span><span><i style="background:var(--ink)"></i>Interrupteur différentiel type AC</span></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="ph"><h2>Énergie de secours solaire</h2><span class="eyebrow">Pré-dimensionnement</span></div>
+        <div class="pb"><div class="sol" id="sol"></div><p class="muted" style="margin:0;font-size:.82rem" id="solNote"></p></div>
+      </section>
+
+      <section class="panel">
+        <div class="ph"><h2>Hypothèses de calcul</h2><span class="eyebrow">Journal</span></div>
+        <div class="pb"><dl class="hyp" id="hyp"></dl></div>
+      </section>
+
+      <section class="panel">
+        <div class="ph"><h2>Validation par l'ingénieur</h2><span class="eyebrow">Signature</span></div>
+        <div class="pb sign">
+          <div class="fields">
+            <label for="sNom">Nom de l'ingénieur<input type="text" id="sNom"></label>
+            <label for="sOrdre">N° d'inscription à l'Ordre<input type="text" id="sOrdre"></label>
+          </div>
+          <label class="chkline" for="sCoche"><input type="checkbox" id="sCoche"> J'ai vérifié les hypothèses, les sections, les protections et la chute de tension de chaque circuit.</label>
+          <div><button type="button" class="primary" id="btnValider">Valider le module électrification</button></div>
+          <div id="stamp"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const U = 230, RHO = 0.023, COSPHI = 0.9, KFOIS = 0.6;
+const SECTIONS = [1.5, 2.5, 4, 6, 10, 16];
+const IZ = {1.5:17.5, 2.5:24, 4:32, 6:41, 10:57, 16:76};
+const TYPES = {
+  sejour:    {label:'Séjour / salon',        prises:s=>Math.max(5,Math.ceil(s/4)), lum:s=>Math.max(1,Math.ceil(s/20))},
+  chambre:   {label:'Chambre',               prises:()=>3, lum:()=>1},
+  cuisine:   {label:'Cuisine',               prises:s=>s>4?6:3, lum:s=>Math.max(1,Math.ceil(s/15))},
+  sdb:       {label:'Salle de bains',        prises:()=>1, lum:()=>1},
+  wc:        {label:'WC',                    prises:()=>0, lum:()=>1},
+  couloir:   {label:'Couloir / circulation', prises:s=>s>4?1:0, lum:s=>Math.max(1,Math.ceil(s/10))},
+  bureau:    {label:'Bureau',                prises:()=>3, lum:()=>1},
+  garage:    {label:'Garage / buanderie',    prises:()=>1, lum:()=>1},
+  exterieur: {label:'Extérieur / véranda',   prises:()=>1, lum:s=>Math.max(1,Math.ceil(s/15))}
+};
+const EQUIP = {
+  plaque:        {label:'Plaque de cuisson',      P:7200, In:32, S:6,   ks:0.7,  typeA:true},
+  four:          {label:'Four',                   P:3000, In:20, S:2.5, ks:0.75},
+  lavelinge:     {label:'Lave-linge',             P:2500, In:20, S:2.5, ks:0.75, typeA:true},
+  lavevaisselle: {label:'Lave-vaisselle',         P:2000, In:20, S:2.5, ks:0.75},
+  chauffeeau:    {label:'Chauffe-eau électrique', P:2000, In:20, S:2.5, ks:1},
+  pompe:         {label:'Pompe / surpresseur',    P:1100, In:16, S:2.5, ks:1}
+};
+const CLIM = {P:1200, In:20, S:2.5, ks:0.8};
+const BRANCH = [15,30,45,60];
+const KEY = 'api-elec-v1';
+
+function exemple(){
+  let i=0; const r=(nom,type,surface,clim=false)=>({id:'r'+(++i),nom,type,surface,clim});
+  return {
+    projet:{nom:'Maison plain-pied, 3 chambres (exemple)', longueur:15, terre:45, autonomie:6, soleil:4.5},
+    pieces:[r('Séjour','sejour',32,true), r('Cuisine','cuisine',12), r('Chambre 1','chambre',14,true), r('Chambre 2','chambre',12),
+            r('Chambre 3','chambre',11), r('Salle de bains','sdb',6), r('WC','wc',2), r('Couloir','couloir',8), r('Véranda','exterieur',10)],
+    equip:{plaque:true, four:true, lavelinge:true, lavevaisselle:false, chauffeeau:true, pompe:true},
+    longueurs:{'spe-plaque':10,'spe-four':10,'spe-pompe':28,'clim-r1':12,'clim-r3':18},
+    signature:{nom:'', ordre:'', coche:false, valideLe:null},
+    nextId:i+1
+  };
+}
+let state;
+try{ const s=JSON.parse(localStorage.getItem(KEY)||'null'); state = (s && s.projet && Array.isArray(s.pieces)) ? s : exemple(); }catch(e){ state = exemple(); }
+let filtre = 'tous';
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const nf = (v,d=1) => Number(v).toLocaleString('fr-FR',{minimumFractionDigits:d,maximumFractionDigits:d});
+const fs = s => String(s).replace('.',',');
+const chunk = (a,n) => { const o=[]; for(let i=0;i<a.length;i+=n) o.push(a.slice(i,i+n)); return o; };
+const uniq = a => [...new Set(a)].join(', ');
+
+/* ---------- Moteur de calcul ---------- */
+function calc(){
+  const P = state.projet, L0 = +P.longueur || 15;
+  const circ = [];
+  const pts = [], pcs = [], pcCuis = [];
+  state.pieces.forEach(p => {
+    const t = TYPES[p.type], s = +p.surface || 0;
+    for(let i=0;i<t.lum(s);i++) pts.push(p.nom);
+    const np = t.prises(s);
+    for(let i=0;i<np;i++) (p.type==='cuisine' ? pcCuis : pcs).push(p.nom);
+  });
+  chunk(pts,8).forEach((g,i)=>circ.push({key:'ecl-'+(i+1), cat:'ecl', nom:'Éclairage '+(i+1), det:uniq(g), n:g.length, unite:'points',
+    P:g.length*100, In:16, S0:1.5, ks:1, lim:3, Ib:g.length*100/U}));
+  chunk(pcs,12).forEach((g,i)=>circ.push({key:'pc-'+(i+1), cat:'pc', nom:'Prises '+(i+1), det:uniq(g), n:g.length, unite:'prises',
+    P:g.length*300, In:20, S0:2.5, ks:0.25, lim:5, Ib:16}));
+  chunk(pcCuis,6).forEach((g,i)=>circ.push({key:'pcc-'+(i+1), cat:'pc', nom:'Prises cuisine'+(i?' '+(i+1):''), det:'Dont 4 au plan de travail', n:g.length, unite:'prises',
+    P:g.length*300, In:20, S0:2.5, ks:0.3, lim:5, Ib:16}));
+  state.pieces.filter(p=>p.clim).forEach(p=>circ.push({key:'clim-'+p.id, cat:'spe', nom:'Climatiseur', det:p.nom, n:1, unite:'appareil',
+    P:CLIM.P, In:CLIM.In, S0:CLIM.S, ks:CLIM.ks, lim:5, Ib:CLIM.P/(U*COSPHI)}));
+  Object.entries(EQUIP).forEach(([k,e])=>{ if(state.equip[k]) circ.push({key:'spe-'+k, cat:'spe', nom:e.label, det:'Circuit spécialisé', n:1, unite:'appareil',
+    P:e.P, In:e.In, S0:e.S, ks:e.ks, lim:5, Ib:e.P/U, typeA:!!e.typeA}); });
+
+  circ.forEach(c=>{
+    c.L = +(state.longueurs[c.key] ?? L0) || L0;
+    const du = S => 2*RHO*c.L*c.Ib/S/U*100;
+    c.du0 = du(c.S0); c.S = c.S0; c.etat='ok';
+    if(c.du0 > c.lim){
+      const s = SECTIONS.find(x => x>=c.S0 && du(x)<=c.lim);
+      if(s){ c.S = s; c.etat='warn'; } else { c.S = 16; c.etat='bad'; }
+    }
+    c.du = du(c.S); c.Iz = IZ[c.S];
+    if(c.In > c.Iz || c.Ib > c.In) c.etat='bad';
+  });
+
+  const surf = state.pieces.reduce((a,p)=>a+(+p.surface||0),0);
+  const nSurf = surf<35?1:(surf<=100?2:3);
+  const A = circ.filter(c=>c.typeA), rest = circ.filter(c=>!c.typeA);
+  const nAC = Math.max(nSurf-(A.length?1:0), Math.ceil(rest.length/8), 1);
+  const ids = [];
+  if(A.length) ids.push({type:'A', circuits:A});
+  const acs = Array.from({length:nAC},()=>({type:'AC', circuits:[]}));
+  rest.forEach((c,i)=>acs[i%nAC].circuits.push(c));
+  ids.push(...acs.filter(d=>d.circuits.length));
+  let num=0;
+  ids.forEach((d,i)=>{ d.nom='ID'+(i+1); d.I=d.circuits.reduce((a,c)=>a+c.Ib*c.ks,0); d.In=d.I>40?63:40; d.circuits.forEach(c=>{c.num=++num; c.id=d.nom;}); });
+
+  const inst = circ.reduce((a,c)=>a+c.P,0), dem = circ.reduce((a,c)=>a+c.P*c.ks,0);
+  const kva = dem*KFOIS/COSPHI/1000, Iabo = kva*1000/U;
+  const branch = BRANCH.find(b=>b>=Iabo) || null;
+
+  // Solaire
+  const Pecl = circ.filter(c=>c.cat==='ecl').reduce((a,c)=>a+c.P,0);
+  const Pess = Pecl + 600 + (state.equip.pompe?EQUIP.pompe.P:0);
+  const ond = Math.ceil(Pess*1.25/1000*2)/2;
+  const bat = Pess*0.6*(+P.autonomie||0)/1000/(0.8*0.9);
+  const Ej = Pess*0.5*12/1000;
+  const kwc = Ej/((+P.soleil||4.5)*0.75);
+
+  // Contrôles
+  const ch = [];
+  circ.forEach(c=>{
+    const nomC = `C${c.num} · ${c.nom}${c.cat==='spe'&&c.det!=='Circuit spécialisé'?' – '+c.det:''}`;
+    if(c.etat==='bad' && (c.In>c.Iz||c.Ib>c.In)) ch.push({n:'bad', t:nomC+' : protection incompatible', d:`Ib ${nf(c.Ib)} A, In ${c.In} A, Iz ${fs(c.Iz)} A. Il faut Ib ≤ In ≤ Iz.`});
+    else if(c.etat==='bad') ch.push({n:'bad', t:nomC+' : chute de tension excessive', d:`${nf(c.du,2)} % même en 16 mm² sur ${c.L} m (limite ${c.lim} %). Rapprocher le tableau ou créer un sous-tableau.`});
+    else if(c.etat==='warn') ch.push({n:'warn', t:nomC+' : section augmentée', d:`${fs(c.S0)} → ${fs(c.S)} mm² pour tenir la chute de tension (${nf(c.du0,2)} % → ${nf(c.du,2)} %, limite ${c.lim} %) sur ${c.L} m.`});
+    else ch.push({n:'ok', t:nomC, d:`${fs(c.S)} mm², disjoncteur ${c.In} A, ΔU ${nf(c.du,2)} % ≤ ${c.lim} %.`});
+  });
+  ids.forEach(d=>ch.push({n:'ok', t:`${d.nom} · interrupteur différentiel 30 mA type ${d.type}`, d:`${d.circuits.length} circuit${d.circuits.length>1?'s':''} (8 maximum), calibre ${d.In} A pour ${nf(d.I)} A estimés.`}));
+  if(A.length) ch.push({n:'ok', t:'Différentiel type A pour plaque et lave-linge', d:'Ces circuits sont regroupés sous un interrupteur différentiel de type A.'});
+  if(state.pieces.length===0) ch.push({n:'bad', t:'Aucune pièce saisie', d:'Ajoutez au moins une pièce pour générer l’installation.'});
+  state.pieces.forEach(p=>{ if(!(+p.surface>0)) ch.push({n:'bad', t:`${p.nom||'Pièce sans nom'} : surface manquante`, d:'Indiquez la surface en m².'}); });
+  const R = P.terre===''||P.terre===null||P.terre===undefined ? null : +P.terre;
+  if(R===null || isNaN(R)) ch.push({n:'bad', t:'Prise de terre : mesure requise', d:'Saisissez la résistance de terre mesurée sur site.'});
+  else if(R<=100) ch.push({n:'ok', t:'Prise de terre', d:`${R} Ω ≤ 100 Ω recommandés.`});
+  else if(R<=500) ch.push({n:'warn', t:'Prise de terre à améliorer', d:`${R} Ω > 100 Ω. Ajouter des piquets ou une boucle à fond de fouille.`});
+  else ch.push({n:'bad', t:'Prise de terre insuffisante', d:`${R} Ω : la protection des personnes n’est pas assurée de façon fiable.`});
+  if(!branch) ch.push({n:'warn', t:'Puissance élevée pour un branchement monophasé', d:`${nf(Iabo)} A appelés. Étudier un branchement triphasé 400 V.`});
+  else ch.push({n:'ok', t:'Branchement', d:`Disjoncteur de branchement ${branch} A, 500 mA, pour ${nf(kva)} kVA appelés.`});
+  if(state.pieces.some(p=>p.type==='sdb')) ch.push({n:'warn', t:'Salle de bains : volumes à vérifier sur plan', d:'Aucune prise ni interrupteur dans les volumes 0, 1 et 2 ; liaison équipotentielle locale.'});
+  if(state.pieces.some(p=>p.type==='exterieur')) ch.push({n:'warn', t:'Extérieur : indice de protection', d:'Prises et luminaires extérieurs IP44 minimum.'});
+  ch.push({n:'warn', t:'Parafoudre', d:'Recommandé en tête de tableau dans les zones à forte activité orageuse.'});
+
+  return {circ, ids, surf, inst, dem, kva, Iabo, branch, Pess, ond, bat, Ej, kwc, ch,
+    nbBad:ch.filter(c=>c.n==='bad').length, nbWarn:ch.filter(c=>c.n==='warn').length};
+}
+
+/* ---------- Rendu ---------- */
+function renderInputs(){
+  const P=state.projet;
+  $('pNom').value=P.nom; $('pLong').value=P.longueur; $('pTerre').value=P.terre??''; $('pAuto').value=P.autonomie; $('pSoleil').value=P.soleil;
+  $('sNom').value=state.signature.nom; $('sOrdre').value=state.signature.ordre; $('sCoche').checked=state.signature.coche;
+  renderRooms();
+  $('equip').innerHTML = Object.entries(EQUIP).map(([k,e])=>`<label for="eq-${k}"><input type="checkbox" id="eq-${k}" data-eq="${k}" ${state.equip[k]?'checked':''}> ${e.label} <span class="muted num">${nf(e.P/1000)} kW</span></label>`).join('');
+}
+function renderRooms(){
+  const opts = t => Object.entries(TYPES).map(([k,v])=>`<option value="${k}" ${k===t?'selected':''}>${v.label}</option>`).join('');
+  $('rooms').innerHTML = state.pieces.map(p=>`<div class="room" data-id="${p.id}">
+    <input type="text" id="${p.id}-nom" data-f="nom" value="${esc(p.nom)}" aria-label="Nom de la pièce">
+    <select id="${p.id}-type" data-f="type" aria-label="Type de pièce">${opts(p.type)}</select>
+    <input type="number" id="${p.id}-surf" data-f="surface" value="${p.surface}" min="0" step="0.5" aria-label="Surface en m²">
+    <label class="chk" for="${p.id}-clim"><input type="checkbox" id="${p.id}-clim" data-f="clim" ${p.clim?'checked':''}> Clim</label>
+    <button type="button" data-del="${p.id}" aria-label="Supprimer ${esc(p.nom)}">✕</button></div>`).join('');
+}
+function renderResults(){
+  const r = calc();
+  $('projLabel').textContent = state.projet.nom;
+  $('surfTotal').textContent = nf(r.surf,1)+' m²';
+  const gp = r.nbBad ? `<span class="pill bad">${r.nbBad} bloquant${r.nbBad>1?'s':''}</span>` : r.nbWarn ? `<span class="pill warn">Conforme avec ${r.nbWarn} avertissement${r.nbWarn>1?'s':''}</span>` : `<span class="pill ok">Conforme</span>`;
+  $('globalPill').innerHTML = gp;
+
+  $('kpis').innerHTML = [
+    ['Puissance installée', nf(r.inst/1000), 'kW'],
+    ['Puissance appelée', nf(r.kva), 'kVA'],
+    ['Branchement', r.branch?r.branch:'Tri', r.branch?'A':'400 V'],
+    ['Circuits', r.circ.length, `${r.ids.length} ID`],
+    ['Statut', r.nbBad?'Bloqué':'Exportable', '']
+  ].map(([l,v,u],i)=>`<div class="kpi"><span class="eyebrow">${l}</span><span class="v ${i===4?(r.nbBad?'bad':'ok'):''}">${v}<small>${u}</small></span></div>`).join('');
+
+  // Filtres et contrôles
+  const counts={tous:r.ch.length, bad:r.nbBad, warn:r.nbWarn, ok:r.ch.length-r.nbBad-r.nbWarn};
+  const lab={tous:'Tous', bad:'Bloquants', warn:'Avertissements', ok:'Conformes'};
+  $('filters').innerHTML = Object.keys(lab).map(k=>`<button type="button" data-filtre="${k}" aria-pressed="${filtre===k}">${lab[k]} <span class="num">${counts[k]}</span></button>`).join('');
+  const order={bad:0,warn:1,ok:2};
+  const niv={ok:'Conforme',warn:'Avertissement',bad:'Bloquant'};
+  const list=r.ch.slice().sort((a,b)=>order[a.n]-order[b.n]).filter(c=>filtre==='tous'||c.n===filtre);
+  $('checks').innerHTML = list.length ? list.map(c=>`<li class="${c.n}"><span class="bar"></span><div><div class="t" style="color:var(--ink)">${esc(c.t)}</div><div class="d">${esc(c.d)}</div></div><span class="pill ${c.n}">${niv[c.n]}</span></li>`).join('') : `<li><span></span><div class="d">Aucun élément dans cette catégorie.</div><span></span></li>`;
+
+  // Tableau des circuits
+  let h = `<thead><tr><th>N°</th><th>Circuit</th><th class="r">Charge</th><th class="r">Disj.</th><th class="r">Section</th><th class="r">Longueur</th><th class="r">Ib</th><th class="r">ΔU</th><th>Statut</th></tr></thead><tbody>`;
+  r.ids.forEach(d=>{
+    h += `<tr class="idrow"><td colspan="9">${d.nom} · Interrupteur différentiel ${d.In} A 30 mA type ${d.type} · ${d.circuits.length} circuits</td></tr>`;
+    d.circuits.forEach(c=>{
+      h += `<tr><td class="num">C${c.num}</td><td><div>${esc(c.nom)}</div><div class="det">${esc(c.det)}</div></td>
+        <td class="r num">${c.n} ${c.unite}<br><span class="muted">${nf(c.P/1000,2)} kW</span></td>
+        <td class="r num">${c.In} A</td>
+        <td class="r num ${c.S!==c.S0?'up':''}">${fs(c.S)} mm²</td>
+        <td class="r"><input type="number" id="len-${c.key}" data-len="${c.key}" value="${c.L}" min="1" step="1" aria-label="Longueur du circuit C${c.num} en mètres"></td>
+        <td class="r num">${nf(c.Ib)} A</td>
+        <td class="r num">${nf(c.du,2)} %<br><span class="muted">≤ ${c.lim} %</span></td>
+        <td><span class="pill ${c.etat}">${niv[c.etat]}</span></td></tr>`;
+    });
+  });
+  $('tCircuits').innerHTML = h+'</tbody>';
+
+  $('unif').innerHTML = unifilaire(r);
+
+  $('sol').innerHTML = [
+    ['Charges essentielles', nf(r.Pess/1000,2), 'kW'],
+    ['Onduleur', nf(r.ond,1), 'kVA'],
+    ['Batteries', nf(r.bat,1), 'kWh'],
+    ['Panneaux', nf(r.kwc,1), 'kWc']
+  ].map(([l,v,u])=>`<div class="c"><span class="eyebrow">${l}</span><span class="v">${v} <small class="muted">${u}</small></span></div>`).join('');
+  $('solNote').textContent = `Éclairage + 600 W (réfrigérateur, TV, recharges)${state.equip.pompe?' + pompe':''}. Batteries pour ${state.projet.autonomie} h d'autonomie, décharge 80 %. Production visée ${nf(r.Ej,1)} kWh/jour.`;
+
+  $('hyp').innerHTML = [
+    ['Tension, réseau', '230 V mono, cos φ 0,9'],
+    ['Résistivité du cuivre en service', '0,023 Ω·mm²/m'],
+    ['Chute de tension admise', 'éclairage 3 %, autres 5 %'],
+    ['Puissance par point lumineux', '100 W'],
+    ['Courant d’emploi d’un circuit prises', '16 A (0,8 × In)'],
+    ['Éclairage', '1,5 mm², 16 A, 8 points max'],
+    ['Prises', '2,5 mm², 20 A, 12 prises max'],
+    ['Courant admissible Iz', 'méthode B, PVC, 2 conducteurs'],
+    ['Coefficients de simultanéité', 'prises 0,25 ; cuisson 0,7 ; clim 0,8'],
+    ['Foisonnement général du logement', '0,6'],
+    ['Différentiels', '≤ 8 circuits par ID ; nombre selon surface'],
+    ['Prises par pièce', 'séjour 1 / 4 m² (min 5) ; chambre 3 ; cuisine 6']
+  ].map(([a,b])=>`<dt>${a}</dt><dd>${b}</dd>`).join('');
+
+  const s=state.signature;
+  $('btnValider').disabled = !!r.nbBad || !s.coche || !s.nom.trim() || !!s.valideLe;
+  $('stamp').innerHTML = s.valideLe
+    ? `<div class="stamp">Validé par ${esc(s.nom)}${s.ordre?' (n° '+esc(s.ordre)+')':''} le ${esc(s.valideLe)}</div>`
+    : `<div class="stamp off">${r.nbBad?`Validation impossible : ${r.nbBad} point${r.nbBad>1?'s':''} bloquant${r.nbBad>1?'s':''} à corriger.`:'Non validé. Renseignez votre nom et cochez la vérification.'} Toute modification du projet annule la validation.</div>`;
+  window._last = r;
+}
+
+function unifilaire(r){
+  const colW=58, gap=26, left=24;
+  let x=left; const G=[];
+  r.ids.forEach(d=>{ const w=Math.max(d.circuits.length,1)*colW; G.push({d,x,w}); x+=w+gap; });
+  const W=Math.max(x-gap+left,420), H=470, busY=96;
+  const t=(s,n)=>s.length>n?s.slice(0,n-1)+'…':s;
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Schéma unifilaire du tableau électrique">`;
+  s+=`<rect class="box" x="${left}" y="14" width="200" height="44" rx="4"/>`;
+  s+=`<text class="lb" x="${left+10}" y="32">Disjoncteur de branchement</text><text x="${left+10}" y="49">${r.branch?r.branch+' A':'Triphasé'} · 500 mA</text>`;
+  s+=`<line class="w-ph" x1="${left+100}" y1="58" x2="${left+100}" y2="${busY}" stroke-width="2.5"/>`;
+  s+=`<line class="w-ph" x1="${left}" y1="${busY}" x2="${W-left}" y2="${busY}" stroke-width="4"/>`;
+  s+=`<text class="mu" x="${left+240}" y="40">Alimentation 230 V · ${nf(r.kva)} kVA appelés</text>`;
+  G.forEach(g=>{
+    const cx=g.x+g.w/2, A=g.d.type==='A';
+    s+=`<line class="w-ph" x1="${cx}" y1="${busY}" x2="${cx}" y2="120" stroke-width="2"/>`;
+    s+=`<rect class="${A?'boxA':'box'}" x="${g.x+3}" y="120" width="${g.w-6}" height="46" rx="4"/>`;
+    s+=`<text class="lb" x="${cx}" y="139" text-anchor="middle">${g.d.nom} · ${g.d.In} A</text><text x="${cx}" y="156" text-anchor="middle">30 mA ${g.d.type}</text>`;
+    s+=`<line class="w-ph" x1="${cx}" y1="166" x2="${cx}" y2="186" stroke-width="2"/>`;
+    const x1=g.x+colW/2, x2=g.x+g.w-colW/2;
+    if(x2>x1) s+=`<line class="w-ph" x1="${x1}" y1="186" x2="${x2}" y2="186" stroke-width="2"/>`;
+    g.d.circuits.forEach((c,i)=>{
+      const ci=g.x+colW*i+colW/2;
+      s+=`<line class="w-ph" x1="${ci}" y1="186" x2="${ci}" y2="206" stroke-width="1.5"/>`;
+      s+=`<rect class="box" x="${ci-14}" y="206" width="28" height="34" rx="3"/>`;
+      s+=`<text x="${ci}" y="227" text-anchor="middle">${c.In}A</text>`;
+      s+=`<line class="w-ph" x1="${ci}" y1="240" x2="${ci}" y2="262" stroke-width="1.5"/>`;
+      const lab = c.cat==='spe' && c.det!=='Circuit spécialisé' ? c.nom+' '+c.det : c.nom;
+      s+=`<text class="lb" transform="translate(${ci-3},270) rotate(90)">C${c.num} ${esc(t(lab,24))}</text>`;
+      s+=`<text class="mu" transform="translate(${ci+11},270) rotate(90)">${fs(c.S)} mm² · ${c.L} m</text>`;
+    });
+  });
+  return s+'</svg>';
+}
+
+function rapportTexte(){
+  const r=window._last, P=state.projet, niv={ok:'CONFORME',warn:'AVERTISSEMENT',bad:'BLOQUANT'};
+  let t=`ASSISTANT PLAN INGÉNIERIE – Module électrification\nProjet : ${P.nom}\nSurface : ${nf(r.surf)} m²\n`;
+  t+=`Puissance installée : ${nf(r.inst/1000)} kW · appelée : ${nf(r.kva)} kVA · branchement : ${r.branch?r.branch+' A 500 mA':'triphasé à étudier'}\n\nCIRCUITS\n`;
+  r.ids.forEach(d=>{ t+=`${d.nom} – ID ${d.In} A 30 mA type ${d.type}\n`; d.circuits.forEach(c=>{ t+=`  C${c.num} ${c.nom} (${c.det}) – ${fs(c.S)} mm², ${c.In} A, ${c.L} m, ΔU ${nf(c.du,2)} % – ${niv[c.etat]}\n`; }); });
+  t+=`\nCONTRÔLES\n`; r.ch.forEach(c=>{ t+=`[${niv[c.n]}] ${c.t} : ${c.d}\n`; });
+  t+=`\nSECOURS SOLAIRE (pré-dimensionnement) : onduleur ${nf(r.ond)} kVA, batteries ${nf(r.bat)} kWh, panneaux ${nf(r.kwc)} kWc\n`;
+  const s=state.signature; t+= s.valideLe ? `\nValidé par ${s.nom}${s.ordre?' (n° '+s.ordre+')':''} le ${s.valideLe}\n` : `\nNON VALIDÉ – à vérifier et signer par un ingénieur qualifié.\n`;
+  return t;
+}
+
+/* ---------- Événements ---------- */
+function changed(){ state.signature.valideLe=null; save(); renderResults(); }
+function toast(m){ const el=$('toast'); el.textContent=m; el.hidden=false; clearTimeout(toast._t); toast._t=setTimeout(()=>el.hidden=true,2200); }
+
+$('pNom').addEventListener('input',e=>{state.projet.nom=e.target.value; changed();});
+$('pLong').addEventListener('change',e=>{state.projet.longueur=Math.max(1,+e.target.value||15); state.longueurs={}; changed(); toast('Longueurs remises à la valeur par défaut');});
+$('pTerre').addEventListener('input',e=>{state.projet.terre=e.target.value===''?'':+e.target.value; changed();});
+$('pAuto').addEventListener('input',e=>{state.projet.autonomie=Math.max(0,+e.target.value||0); changed();});
+$('pSoleil').addEventListener('input',e=>{state.projet.soleil=Math.max(1,+e.target.value||4.5); changed();});
+
+$('rooms').addEventListener('input',e=>{
+  const row=e.target.closest('.room'); if(!row) return; const p=state.pieces.find(x=>x.id===row.dataset.id); const f=e.target.dataset.f;
+  if(f==='nom') p.nom=e.target.value; else if(f==='surface') p.surface=+e.target.value||0; else if(f==='type') p.type=e.target.value; else if(f==='clim') p.clim=e.target.checked;
+  changed();
+});
+$('rooms').addEventListener('change',e=>{ if(e.target.dataset.f==='type'||e.target.dataset.f==='clim'){ const row=e.target.closest('.room'); const p=state.pieces.find(x=>x.id===row.dataset.id); if(e.target.dataset.f==='type') p.type=e.target.value; else p.clim=e.target.checked; changed(); } });
+$('rooms').addEventListener('click',e=>{ const id=e.target.dataset.del; if(!id) return; state.pieces=state.pieces.filter(p=>p.id!==id); renderRooms(); changed(); });
+$('btnAdd').addEventListener('click',()=>{ const id='r'+(state.nextId++); state.pieces.push({id,nom:'Nouvelle pièce',type:'chambre',surface:10,clim:false}); renderRooms(); changed(); const el=$(id+'-nom'); if(el){el.focus(); el.select();} });
+$('equip').addEventListener('change',e=>{ const k=e.target.dataset.eq; if(k){ state.equip[k]=e.target.checked; changed(); } });
+$('tCircuits').addEventListener('change',e=>{ const k=e.target.dataset.len; if(k){ state.longueurs[k]=Math.max(1,+e.target.value||1); changed(); } });
+$('filters').addEventListener('click',e=>{ const b=e.target.closest('[data-filtre]'); if(b){ filtre=b.dataset.filtre; renderResults(); } });
+
+$('sNom').addEventListener('input',e=>{state.signature.nom=e.target.value; state.signature.valideLe=null; save(); renderResults();});
+$('sOrdre').addEventListener('input',e=>{state.signature.ordre=e.target.value; state.signature.valideLe=null; save(); renderResults();});
+$('sCoche').addEventListener('change',e=>{state.signature.coche=e.target.checked; state.signature.valideLe=null; save(); renderResults();});
+$('btnValider').addEventListener('click',()=>{ state.signature.valideLe=new Date().toLocaleString('fr-FR',{dateStyle:'long',timeStyle:'short'}); save(); renderResults(); toast('Module validé'); });
+
+$('btnCopy').addEventListener('click',()=>{
+  const txt=rapportTexte();
+  const fallback=()=>{ const ta=document.createElement('textarea'); ta.value=txt; ta.style.cssText='position:fixed;inset:10% 5%;width:90%;height:80%;z-index:20'; document.body.appendChild(ta); ta.select(); toast('Sélectionnez et copiez le texte, puis cliquez ailleurs'); ta.addEventListener('blur',()=>ta.remove()); ta.focus(); };
+  try{ navigator.clipboard.writeText(txt).then(()=>toast('Rapport copié'),fallback); }catch(e){ fallback(); }
+});
+$('btnReset').addEventListener('click',()=>{ state=exemple(); save(); renderInputs(); renderResults(); toast('Exemple rechargé'); });
+
+renderInputs(); renderResults();
+</script>
+
+</body></html>
