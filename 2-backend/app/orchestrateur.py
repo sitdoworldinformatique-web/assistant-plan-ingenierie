@@ -20,6 +20,7 @@ from typing import Any, Protocol
 from pydantic import ValidationError
 
 from app.moteurs import chaine, regles
+from app.moteurs.commun import fmt
 from app.moteurs.normes import VERSION_MOTEURS
 from app.moteurs.programme import CHAMPS_TERRAIN, Programme, analyser
 
@@ -151,8 +152,54 @@ def generer(texte: str | None, programme: Programme | None, ia: ClientIA | None,
             "journal_ia": journal.entrees, "empreinte": empreinte(programme)}
 
 
-def expliquer(contexte: dict, ia: ClientIA | None, journal: Journal) -> str:
-    debut = time.perf_counter()
-    texte = ia.expliquer(contexte) if ia is not None else ""
-    journal.ajouter("expliquer", contexte, texte, ia.modele if ia else "", debut)
-    return texte
+def contexte_element(resultats: dict, element_id: str) -> dict | None:
+    """Contrôle (ex. ELEC-DU-C4) ou circuit (ex. C4, ecl-1) → données et hypothèses à expliquer."""
+    elec = resultats.get("electricite") or {}
+    circuits = elec.get("circuits") or []
+
+    def circuit(ident: str) -> dict | None:
+        ident = ident.upper()
+        return next((c for c in circuits if f"C{c.get('num')}" == ident or str(c.get("key", "")).upper() == ident),
+                    None)
+
+    controle = next((c for c in resultats.get("controles", []) if c["id"] == element_id), None)
+    if controle is not None:
+        module = controle["module"]
+        ctx: dict = {"type": "controle", "controle": controle}
+        suffixe = element_id.rsplit("-", 1)[-1]
+        if module == "electricite" and (c := circuit(suffixe)) is not None:
+            ctx["circuit"] = c
+    elif (c := circuit(element_id)) is not None:
+        module = "electricite"
+        ctx = {"type": "circuit", "circuit": c,
+               "controles": [k for k in resultats.get("controles", []) if k["id"].endswith(f"-C{c.get('num')}")]}
+    else:
+        return None
+    ctx["hypotheses"] = [h for h in resultats.get("hypotheses", []) if h.get("module") == module]
+    return ctx
+
+
+def _explication_regles(ctx: dict) -> str:
+    """Explication sans IA : reprend mot pour mot ce que le moteur a écrit."""
+    if ctx["type"] == "controle":
+        c = ctx["controle"]
+        texte = f"{c['titre']}. {c['detail']}"
+        if c.get("reference_norme"):
+            texte += f" Référence : {c['reference_norme']}."
+        return texte
+    c = ctx["circuit"]
+    return (f"Circuit C{c['num']} « {c['nom']} » ({c['det']}) : protection {c['in_']} A, section {fmt(c['s'])} mm², "
+            f"longueur {fmt(c['l'], 1)} m, chute de tension {fmt(c['du'])} % pour une limite de {fmt(c['lim'])} %.")
+
+
+def expliquer(ctx: dict, ia: ClientIA | None, journal: Journal) -> tuple[str, str]:
+    """Renvoie (texte, source) : source = « ia » ou « regles » (sans clé, ou si l'IA échoue)."""
+    if ia is not None:
+        debut = time.perf_counter()
+        try:
+            texte = ia.expliquer(ctx)
+            journal.ajouter("expliquer", ctx, texte, ia.modele, debut)
+            return texte, "ia"
+        except Exception as e:
+            journal.ajouter("expliquer", ctx, f"erreur : {e.__class__.__name__}", ia.modele, debut, erreur=True)
+    return _explication_regles(ctx), "regles"

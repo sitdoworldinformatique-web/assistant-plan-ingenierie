@@ -11,6 +11,7 @@ Chaque choix non couvert par le cahier des charges est noté ici (option la plus
 | 3 | fait — mêmes circuits que le prototype, vérifié en exécutant son JavaScript (4 variantes) |
 | 4 | fait — structure, toiture, solaire, métré, règles ; formules vérifiées par des valeurs calculées à la main |
 | 5 | fait — API, stockage, auth JWT, validations liées à l'empreinte ; parcours générer → modifier → valider → modifier testé |
+| 6 | fait — connecteurs Claude et Nano Banana testés avec réponses simulées ; pipeline complet (interprétation, auto-correction, refus des champs interdits, secours sans clé) ; `/expliquer` |
 
 ## Décisions
 
@@ -120,3 +121,32 @@ Au démarrage, les tables manquantes sont créées (`AUTO_CREATE_TABLES=1`, déf
 amorcée. En production, mettre `AUTO_CREATE_TABLES=0` et lancer `alembic upgrade head` (migration initiale fournie).
 Les champs JSON sont en JSONB sous PostgreSQL. Ajout d'une colonne `remarques` (ambiguïtés de l'interprétation)
 et `version` (incrémentée à chaque modification) sur `Projet`, et `utilisateur_id` sur `Rendu` (quotas).
+
+### D-019 — Connecteur Claude : le SDK gère les nouvelles tentatives
+`apiconnect.claude` passe par le SDK `anthropic` (délai 60 s, 2 nouvelles tentatives intégrées au SDK).
+`apiconnect.http` (httpx, 2 nouvelles tentatives à attente exponentielle sur 429/5xx/réseau, `Retry-After`
+respecté) sert à Nano Banana. Les erreurs sont traduites en `IANonConfiguree` (clé absente ou refusée),
+`IAIndisponible` (réseau, surcharge, 5xx : secours immédiat) et `ReponseInvalide` (sortie inexploitable :
+nouvelle tentative, puis secours). Seuls la méthode, l'hôte, le chemin et le statut sont journalisés, jamais
+les en-têtes. Un test parcourt les fichiers suivis par git à la recherche de clés réelles.
+
+### D-020 — Double protection des données de terrain
+Le connecteur recopie `resistance_terre`, `portance_sol` et `portance_mesuree` d'origine dans toute correction
+proposée, et l'orchestrateur refuse de toute façon une correction qui toucherait un champ hors liste blanche.
+Les dimensions du terrain ne sont pas corrigeables non plus.
+
+### D-021 — « Expliquer » sans clé
+Sans clé ou si Claude échoue, `POST /api/projets/{id}/expliquer` renvoie le texte du moteur (titre, détail,
+référence ; pour un circuit, protection, section, longueur et chute de tension) avec `source: "regles"`.
+`element_id` accepte un identifiant de contrôle (`ELEC-DU-C4`), un numéro de circuit (`C4`) ou sa clé (`ecl-1`).
+Claude reçoit l'élément et les hypothèses de son module ; sa réponse est tronquée à 120 mots. L'appel est
+ajouté au journal IA sans changer la date de modification ni l'empreinte du projet.
+
+### D-022 — API Nano Banana relue le 2026-10-18
+La page officielle confirme l'API `interactions` décrite au § 8 (modèle par défaut `gemini-nano-banana-2.1`,
+`image_size` en majuscules). L'analyseur prend la dernière image de `steps[].content[]` (comme `output_image`
+du SDK), accepte aussi `output_image`, l'ancien format `inline_data` et ignore une éventuelle copie de l'entrée.
+Styles : `plan_meuble`, `iso_coupe`, `facade`, `perspective`.
+
+### D-023 — Dates en UTC explicite
+SQLite rend les dates sans fuseau ; l'API les renvoie toujours avec `+00:00`.

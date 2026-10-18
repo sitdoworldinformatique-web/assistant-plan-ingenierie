@@ -180,3 +180,44 @@ def test_dependance_ia_remplacable(client, comptes):
     assert r.json()["programme"]["chambres"] == 5 and r.json()["source"] == "faux-modele"
     assert "ambigu : nombre de salles de bain" in r.json()["remarques"]
     assert stockage is not None
+
+
+def test_expliquer(client, comptes):
+    c = comptes["constructeur"]
+    projet = client.post("/api/projets/generer", json={"programme": {}}, headers=c).json()
+    pid, modifie_le = projet["id"], projet["modifie_le"]
+    # Sans clé : explication reprise du moteur, rien n'est journalisé
+    r = client.post(f"/api/projets/{pid}/expliquer", json={"element_id": "IMPL-EMPRISE-L"}, headers=c)
+    assert r.status_code == 200 and r.json()["source"] == "regles" and "17,48 m" in r.json()["texte"]
+    r = client.post(f"/api/projets/{pid}/expliquer", json={"element_id": "C1"}, headers=c)
+    assert r.json()["texte"].startswith("Circuit C1")
+    r = client.post(f"/api/projets/{pid}/expliquer", json={"element_id": "XYZ"}, headers=c)
+    assert r.status_code == 404 and r.json()["code"] == "element_introuvable"
+
+    class Faux:
+        modele = "faux-modele"
+
+        def expliquer(self, contexte):
+            assert contexte["controle"]["id"] == "IMPL-EMPRISE-L" and contexte["hypotheses"]
+            return "La maison dépasse la largeur constructible du terrain."
+
+    app.dependency_overrides[ia.client_texte] = lambda: Faux()
+    r = client.post(f"/api/projets/{pid}/expliquer", json={"element_id": "IMPL-EMPRISE-L"},
+                    headers=comptes["ingenieur"])
+    assert r.json() == {"element_id": "IMPL-EMPRISE-L", "source": "ia",
+                        "texte": "La maison dépasse la largeur constructible du terrain."}
+    apres = client.get(f"/api/projets/{pid}", headers=c).json()
+    assert apres["journal_ia"][-1]["etape"] == "expliquer" and apres["journal_ia"][-1]["modele"] == "faux-modele"
+    assert apres["modifie_le"] == modifie_le and apres["empreinte"] == projet["empreinte"]
+
+
+def test_clients_ia_selon_les_cles(monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    assert ia.client_texte() is None and ia.client_image() is None
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+    monkeypatch.setenv("CLAUDE_MODEL", "claude-test")
+    monkeypatch.setenv("GEMINI_API_KEY", "AIza-test")
+    texte, image = ia.client_texte(), ia.client_image()
+    assert texte.modele == "claude-test" and image.modele == "gemini-nano-banana-2.1"
+    assert "sk-ant-test" not in repr(texte) and "AIza-test" not in repr(image)

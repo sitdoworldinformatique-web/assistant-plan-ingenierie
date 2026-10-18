@@ -11,7 +11,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse, Response
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -83,16 +83,21 @@ def _charger(s: Session, projet_id: int, u: Utilisateur, ecriture: bool = False)
     return p
 
 
+def _iso(d: datetime) -> str:
+    """SQLite rend des dates sans fuseau : elles sont en UTC, on l'indique toujours."""
+    return (d if d.tzinfo else d.replace(tzinfo=UTC)).isoformat()
+
+
 def _validations(s: Session, p: Projet) -> list[dict]:
     vs = s.scalars(select(Validation).where(Validation.projet_id == p.id).order_by(Validation.date)).all()
     return [{"id": v.id, "module": v.module, "ingenieur_id": v.ingenieur_id, "nom": v.nom,
-             "numero_ordre": v.numero_ordre, "empreinte": v.empreinte, "date": v.date.isoformat(),
+             "numero_ordre": v.numero_ordre, "empreinte": v.empreinte, "date": _iso(v.date),
              "commentaire": v.commentaire, "encore_valide": v.empreinte == p.empreinte} for v in vs]
 
 
 def _resume(p: Projet) -> dict:
-    return {"id": p.id, "nom": p.nom, "statut": p.statut, "cree_le": p.cree_le.isoformat(),
-            "modifie_le": p.modifie_le.isoformat(), "proprietaire_id": p.proprietaire_id, "version": p.version}
+    return {"id": p.id, "nom": p.nom, "statut": p.statut, "cree_le": _iso(p.cree_le),
+            "modifie_le": _iso(p.modifie_le), "proprietaire_id": p.proprietaire_id, "version": p.version}
 
 
 def _detail(s: Session, p: Projet) -> dict:
@@ -209,6 +214,24 @@ def modifier_programme(projet_id: int, programme: Programme, u: Utilisateur = De
     return _detail(s, p)
 
 
+@app.post("/api/projets/{projet_id}/expliquer", tags=["ia"])
+def expliquer(projet_id: int, d: schemas.DemandeExpliquer, u: Utilisateur = Depends(utilisateur_courant),
+              s: Session = Depends(stockage.session), client=Depends(ia.client_texte)) -> dict:
+    """Explique un contrôle ou un circuit en français simple. L'IA ne change aucune valeur."""
+    p = _charger(s, projet_id, u)
+    ctx = orchestrateur.contexte_element(p.resultats, d.element_id)
+    if ctx is None:
+        raise ErreurApi(404, "element_introuvable", f"Aucun contrôle ni circuit « {d.element_id} » dans ce projet.")
+    journal = orchestrateur.Journal()
+    texte, source = orchestrateur.expliquer(ctx, client, journal)
+    if journal.entrees:
+        # Journal seulement : la date de modification du projet ne change pas
+        s.execute(update(Projet).where(Projet.id == p.id)
+                  .values(journal_ia=[*p.journal_ia, *journal.entrees], modifie_le=Projet.modifie_le))
+        s.commit()
+    return {"element_id": d.element_id, "texte": texte, "source": source}
+
+
 @app.delete("/api/projets/{projet_id}", tags=["projets"], status_code=204)
 def supprimer(projet_id: int, u: Utilisateur = Depends(utilisateur_courant),
               s: Session = Depends(stockage.session)) -> Response:
@@ -287,7 +310,7 @@ def lister_validations(projet_id: int, u: Utilisateur = Depends(utilisateur_cour
 @app.get("/api/admin/prix", tags=["admin"])
 def prix(_u: Utilisateur = Depends(exiger_role("admin")), s: Session = Depends(stockage.session)) -> list[dict]:
     return [{"code": x.code, "libelle": x.libelle, "unite": x.unite, "prix": x.prix, "devise": x.devise,
-             "mis_a_jour_le": x.mis_a_jour_le.isoformat()} for x in s.scalars(select(PrixMateriau)
+             "mis_a_jour_le": _iso(x.mis_a_jour_le)} for x in s.scalars(select(PrixMateriau)
                                                                               .order_by(PrixMateriau.code))]
 
 
