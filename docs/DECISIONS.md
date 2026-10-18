@@ -8,6 +8,7 @@ Chaque choix non couvert par le cahier des charges est noté ici (option la plus
 | 0 | fait — `docker compose up` sert la page (5173) et `/api/sante` (8000) |
 | 1 | fait — 15 phrases de test interprétées par l'analyseur par règles |
 | 2 | fait — plan coté du cas de référence, golden SVG, captures dans `docs/captures/` |
+| 3 | fait — mêmes circuits que le prototype, vérifié en exécutant son JavaScript (4 variantes) |
 
 ## Décisions
 
@@ -58,3 +59,18 @@ sur le cas de référence, comme le prévoit la règle (auto-correction par l'IA
 `murs`, `textes`, `cotes`, `mobilier` (vide pour l'instant), `elec`, `structure`, `annotations`.
 Les étiquettes sont placées automatiquement hors des zones de débattement des portes et des symboles.
 Les cotes des épaisseurs de murs sont en centimètres (« 20 »), les autres en mètres (« 3,74 »).
+
+### D-009 — Électricité : fidélité au prototype
+Le prototype « Module Électrification » est archivé dans `docs/reference/`. Le test
+`test_identique_au_prototype_execute` exécute son JavaScript (Node) sur les mêmes pièces et les mêmes
+longueurs, et compare circuits, sections, états, différentiels et bilan. Une sortie figée sert quand Node est absent.
+Règles reprises telles quelles du prototype : véranda = « extérieur » (1 point lumineux / 15 m²),
+Ib des circuits spécialisés = P / U (P / (U cos φ) pour les climatiseurs), surfaces = surfaces nettes du plan.
+Le WC, le placard et le rangement ne reçoivent pas de prise ; placard et rangement n'ont pas de point lumineux.
+
+### D-010 — Électricité : placement des symboles
+- Tableau à 0,55 m de la porte d'entrée, côté intérieur de la façade du séjour.
+- Prises spécialisées : plaque, four, lave-vaisselle en cuisine ; lave-linge et pompe au garage, sinon en cuisine ;
+  chauffe-eau en salle de bains ; climatiseurs dans leur pièce. Elles s'intercalent parmi les prises normales.
+- Prises de la véranda : uniquement contre la façade. Interrupteur du dégagement : à côté de la baie du séjour.
+- Si aucun point d'un circuit n'existe sur le plan, la longueur par défaut est la plus grande longueur calculée.

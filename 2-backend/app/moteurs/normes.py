@@ -87,8 +87,7 @@ ELECTRICITE = {
     "ordre_specialises": ["plaque", "four", "lavelinge", "lavevaisselle", "chauffeeau", "pompe"],
     "clim": {"libelle": "Climatiseur", "p": 1200.0, "in": 20, "section": 2.5, "ks": 0.8},
     "max_circuits_par_id": 8,
-    "id_par_surface": [(35.0, 1), (100.0, 2)],  # surface < 35 : 1 ; ≤ 100 : 2 ; au-delà : 3
-    "id_au_dela": 3,
+    "id_seuils_surface": (35.0, 100.0),  # surface < 35 m² : 1 ID ; ≤ 100 m² : 2 ; au-delà : 3
     "id_calibres": (40, 63),
     "id_seuil_calibre": 40.0,
     "foisonnement": 0.6,
@@ -100,6 +99,23 @@ ELECTRICITE = {
     "majoration_longueur": 0.10,
     "conducteurs_par_cable": 3,
     "distance_prise_angle": 0.30,
+    # Règles par type de pièce : ("fixe", n) ; ("par_m2", m² par unité, minimum) ; ("seuil", m², n si >, n sinon)
+    "regles_pieces": {
+        "sejour": {"libelle": "Séjour / salon", "prises": ("par_m2", 4.0, 5), "lum": ("par_m2", 20.0, 1)},
+        "chambre": {"libelle": "Chambre", "prises": ("fixe", 3), "lum": ("fixe", 1)},
+        "cuisine": {"libelle": "Cuisine", "prises": ("seuil", 4.0, 6, 3), "lum": ("par_m2", 15.0, 1)},
+        "sdb": {"libelle": "Salle de bains", "prises": ("fixe", 1), "lum": ("fixe", 1)},
+        "wc": {"libelle": "WC", "prises": ("fixe", 0), "lum": ("fixe", 1)},
+        "couloir": {"libelle": "Couloir / circulation", "prises": ("seuil", 4.0, 1, 0), "lum": ("par_m2", 10.0, 1)},
+        "bureau": {"libelle": "Bureau", "prises": ("fixe", 3), "lum": ("fixe", 1)},
+        "garage": {"libelle": "Garage / buanderie", "prises": ("fixe", 1), "lum": ("fixe", 1)},
+        "veranda": {"libelle": "Extérieur / véranda", "prises": ("fixe", 1), "lum": ("par_m2", 15.0, 1)},
+    },
+    # Pièce d'implantation des prises spécialisées (première pièce existante de la liste)
+    "piece_specialises": {
+        "plaque": ["cuisine"], "four": ["cuisine"], "lavevaisselle": ["cuisine"],
+        "lavelinge": ["garage", "cuisine"], "chauffeeau": ["sdb"], "pompe": ["garage", "cuisine"],
+    },
 }
 
 # ---------------------------------------------------------------------------
