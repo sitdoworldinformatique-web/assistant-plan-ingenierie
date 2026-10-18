@@ -177,6 +177,7 @@ def test_unifilaire_svg(elec_ref):
 
 
 def test_plan_avec_symboles(impl_ref, elec_ref):
-    svg = plan_svg.rendre_plan(impl_ref, nom_projet="Villa", date="2026-10-18", elec=elec_ref.model_dump())
+    svg = plan_svg.rendre_plan(impl_ref, nom_projet="Villa", date="2026-10-18", elec=elec_ref.model_dump(),
+                                 calques=["murs", "elec"])
     assert 'class="calque-elec"' in svg
     ET.fromstring(svg)
