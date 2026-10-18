@@ -13,4 +13,4 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B"]
-ignore = ["E501", "E741", "B905"]
+ignore = ["E501", "E741", "B905", "B008"]  # B008 : idiome Depends() de FastAPI

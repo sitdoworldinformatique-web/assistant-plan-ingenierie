@@ -10,6 +10,7 @@ Chaque choix non couvert par le cahier des charges est noté ici (option la plus
 | 2 | fait — plan coté du cas de référence, golden SVG, captures dans `docs/captures/` |
 | 3 | fait — mêmes circuits que le prototype, vérifié en exécutant son JavaScript (4 variantes) |
 | 4 | fait — structure, toiture, solaire, métré, règles ; formules vérifiées par des valeurs calculées à la main |
+| 5 | fait — API, stockage, auth JWT, validations liées à l'empreinte ; parcours générer → modifier → valider → modifier testé |
 
 ## Décisions
 
@@ -100,3 +101,22 @@ poinçon + contrefiches (≈ un rampant). Terrasse : pas de débord, acrotère s
 ### D-014 — Calques par défaut du plan
 `plan.svg` sans paramètre affiche murs, textes, cotes et annotations ; `elec`, `structure` et `mobilier`
 s'activent par `?calques=`. Le placement des étiquettes tient toujours compte des symboles électriques.
+
+### D-015 — Comptes et rôles
+L'inscription publique crée toujours un compte `constructeur`. L'email donné dans `ADMIN_EMAIL` devient
+`admin` à son inscription ; l'admin attribue ensuite les rôles `ingenieur` (avec numéro d'ordre) via
+`PUT /api/admin/utilisateurs/{id}`. Mots de passe hachés avec bcrypt ; jetons JWT HS256 de 24 h (`JWT_DUREE_H`).
+
+### D-016 — Droits sur les projets
+Un constructeur ne voit que ses projets. Ingénieurs et administrateurs lisent tous les projets (pour les
+vérifier) ; seuls le propriétaire et l'admin modifient ou suppriment.
+
+### D-017 — Modification du programme
+`PUT /api/projets/{id}/programme` recalcule toute la chaîne sans auto-correction IA (l'utilisateur a choisi ses
+valeurs). Les validations existantes restent en base mais `encore_valide` passe à faux dès que l'empreinte change.
+
+### D-018 — Base de données
+Au démarrage, les tables manquantes sont créées (`AUTO_CREATE_TABLES=1`, défaut) et la table des prix est
+amorcée. En production, mettre `AUTO_CREATE_TABLES=0` et lancer `alembic upgrade head` (migration initiale fournie).
+Les champs JSON sont en JSONB sous PostgreSQL. Ajout d'une colonne `remarques` (ambiguïtés de l'interprétation)
+et `version` (incrémentée à chaque modification) sur `Projet`, et `utilisateur_id` sur `Rendu` (quotas).

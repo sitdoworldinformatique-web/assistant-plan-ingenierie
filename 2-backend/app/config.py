@@ -12,7 +12,7 @@ def _liste(valeur: str) -> list[str]:
 @dataclass(frozen=True)
 class Config:
     database_url: str = field(default_factory=lambda: os.getenv("DATABASE_URL", "sqlite:///./donnees/assistant.db"))
-    jwt_secret: str = field(default_factory=lambda: os.getenv("JWT_SECRET", "dev-uniquement-a-changer"))
+    jwt_secret: str = field(default_factory=lambda: os.getenv("JWT_SECRET", "dev-uniquement-a-changer-cle-de-developpement-32o"))
     jwt_duree_h: int = field(default_factory=lambda: int(os.getenv("JWT_DUREE_H", "24")))
     anthropic_api_key: str = field(default_factory=lambda: os.getenv("ANTHROPIC_API_KEY", ""))
     claude_model: str = field(default_factory=lambda: os.getenv("CLAUDE_MODEL", "claude-sonnet-5-5"))
