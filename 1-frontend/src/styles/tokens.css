@@ -1,0 +1,38 @@
+:root {
+  --police: "IBM Plex Sans", system-ui, sans-serif;
+  --police-cond: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
+  --police-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --fond: #f4f6f9;
+  --surface: #ffffff;
+  --texte: #16202c;
+  --texte-2: #4a5768;
+  --bordure: #d3dae3;
+  --accent: #1f5fae;
+  --accent-texte: #ffffff;
+  --ok: #1b7a3d;
+  --avert: #a85b00;
+  --bloquant: #b3261e;
+  /* plan */
+  --plan-fond: #ffffff;
+  --plan-mur: #27313d;
+  --plan-sol: #ffffff;
+  --plan-trait: #27313d;
+  --plan-cote: #1f5fae;
+  --plan-texte: #16202c;
+  --plan-elec: #c0392b;
+  --plan-structure: #7a4fbf;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --fond: #0f1620; --surface: #17212d; --texte: #e6ebf2; --texte-2: #a5b1c2; --bordure: #2c3a4b;
+    --accent: #6ea8ff; --accent-texte: #0f1620; --ok: #5cc98a; --avert: #f0a947; --bloquant: #ff7b72;
+    --plan-fond: #17212d; --plan-mur: #c9d3e0; --plan-sol: #17212d; --plan-trait: #c9d3e0;
+    --plan-cote: #6ea8ff; --plan-texte: #e6ebf2; --plan-elec: #ff8a7a; --plan-structure: #b799ff;
+  }
+}
+:root[data-theme="dark"] {
+  --fond: #0f1620; --surface: #17212d; --texte: #e6ebf2; --texte-2: #a5b1c2; --bordure: #2c3a4b;
+  --accent: #6ea8ff; --accent-texte: #0f1620; --ok: #5cc98a; --avert: #f0a947; --bloquant: #ff7b72;
+  --plan-fond: #17212d; --plan-mur: #c9d3e0; --plan-sol: #17212d; --plan-trait: #c9d3e0;
+  --plan-cote: #6ea8ff; --plan-texte: #e6ebf2; --plan-elec: #ff8a7a; --plan-structure: #b799ff;
+}
