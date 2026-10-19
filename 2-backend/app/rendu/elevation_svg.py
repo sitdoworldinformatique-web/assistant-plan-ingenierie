@@ -147,7 +147,7 @@ def rendre_elevation(res: Resultats, prog: Programme, vue: str = "facade") -> st
                  f'y2="{_n(-niv["terrain"] * S)}"/>')
 
     # Niveaux (à gauche) et cotes d'ensemble
-    marge_g = 360.0
+    marge_g = 500.0
     niveaux = [("assise des semelles", niv["assise"]), ("terrain naturel", niv["terrain"]),
                ("plancher fini", 0.0), ("haut des murs", niv["haut_mur"])]
     if niv["haut"] - niv["haut_mur"] > 0.15:
@@ -158,26 +158,26 @@ def rendre_elevation(res: Resultats, prog: Programme, vue: str = "facade") -> st
         cotes.append(f'<line class="niveau" x1="{_n(x0 - marge_g)}" y1="{_n(y)}" x2="{_n(x1)}" y2="{_n(y)}"/>')
         cotes.append(f'<polygon class="cote-plein" points="{_n(x0 - marge_g + 14)},{_n(y)} {_n(x0 - marge_g + 26)},'
                      f'{_n(y - 10)} {_n(x0 - marge_g + 2)},{_n(y - 10)}"/>')
-        cotes.append(f'<text class="cote-texte" x="{_n(x0 - marge_g + 44)}" y="{_n(y - 4)}" font-size="26">'
+        cotes.append(f'<text class="cote-texte" x="{_n(x0 - marge_g + 50)}" y="{_n(y - 6)}" font-size="38">'
                      f'{_niveau(z)} {escape(nom)}</text>')
     # Cote de largeur hors-tout
-    yc = -z_bas * S + 40
+    yc = -z_bas * S + 50
     cotes.append(f'<line class="cote-ligne" x1="{_n(u_min * S)}" y1="{_n(yc)}" x2="{_n(u_max * S)}" y2="{_n(yc)}"/>')
     for u in (u_min, u_max):
         cotes.append(f'<line class="cote-ligne" x1="{_n(u * S)}" y1="{_n(yc - 8)}" x2="{_n(u * S)}" y2="{_n(yc + 8)}"/>')
     largeur = u_max - u_min
-    cotes.append(f'<text class="cote-texte" x="{_n((u_min + u_max) / 2 * S)}" y="{_n(yc + 24)}" font-size="28" '
+    cotes.append(f'<text class="cote-texte" x="{_n((u_min + u_max) / 2 * S)}" y="{_n(yc + 34)}" font-size="36" '
                  f'text-anchor="middle">{_fr(largeur)}</text>')
 
     # Cadre
     gauche = x0 - marge_g - 10
     droite = x1 + 20
     haut_svg = -(haut + 0.6) * S - 60
-    bas_svg = yc + 90
+    bas_svg = yc + 100
     largeur_vb, hauteur_vb = droite - gauche, bas_svg - haut_svg
-    titre = (f'<text class="titre" x="{_n(gauche + 10)}" y="{_n(haut_svg + 50)}" font-size="44">'
+    titre = (f'<text class="titre" x="{_n(gauche + 10)}" y="{_n(haut_svg + 60)}" font-size="56">'
              f'{TITRES[vue]}</text>'
-             f'<text class="note" x="{_n(droite - 10)}" y="{_n(bas_svg - 12)}" font-size="22" text-anchor="end">'
+             f'<text class="note" x="{_n(droite - 10)}" y="{_n(bas_svg - 12)}" font-size="28" text-anchor="end">'
              f'Échelle 1:100 · cotes de niveau en mètres · élévation indicative, non contractuelle</text>')
     defs = ('<defs><pattern id="terrain" width="14" height="14" patternUnits="userSpaceOnUse" '
             'patternTransform="rotate(45)"><line class="hachure-sol" x1="0" y1="0" x2="0" y2="14"/></pattern></defs>')
