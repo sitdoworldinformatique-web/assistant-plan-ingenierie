@@ -1,0 +1,7 @@
+# Démarrage avant obtention du certificat : HTTP seul + défi ACME. Voir DEPLOIEMENT.md § 4.
+server {
+    listen 80;
+    server_name ${DOMAINE};
+    location /.well-known/acme-challenge/ { root /var/www/certbot; }
+    location / { return 200 "En attente du certificat HTTPS.\n"; add_header Content-Type text/plain; }
+}
