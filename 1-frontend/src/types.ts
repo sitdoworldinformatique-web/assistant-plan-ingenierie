@@ -251,6 +251,11 @@ export interface EntreeJournal {
   erreur?: boolean;
   tentative?: number;
   iteration?: number;
+  /** Étape « commande » : programme avant la commande, réponse affichée, annulation. */
+  programme_avant?: Programme;
+  message?: string;
+  annulee?: boolean;
+  annulation?: boolean;
 }
 
 export interface Validation {
@@ -317,4 +322,55 @@ export interface ListeRendus {
   styles: Record<string, string>;
   ia_image_configuree: boolean;
   quota: { max: number; utilises: number };
+}
+
+export interface Changement {
+  champ: string;
+  libelle: string;
+  avant: unknown;
+  apres: unknown;
+}
+
+export interface ResultatCommande {
+  texte: string;
+  comprise: boolean;
+  source: "ia" | "regles";
+  message: string;
+  changements: Changement[];
+  remarques: string[];
+}
+
+export interface ReponseCommande extends Projet {
+  commande: ResultatCommande;
+}
+
+export type TypeVolume =
+  | "mur_ext" | "mur_int" | "chainage" | "soubassement" | "semelle" | "dalle" | "dalle_veranda" | "vitre" | "porte"
+  | "poteau_veranda" | "poutre_veranda" | "acrotere" | "dalle_toiture";
+
+export interface Boite3D {
+  t: TypeVolume;
+  x: number;
+  y: number;
+  z: number;
+  dx: number;
+  dy: number;
+  dz: number;
+}
+
+export interface Face3D {
+  t: "toit" | "toit_veranda" | "pignon";
+  pts: [number, number, number][];
+}
+
+/** Volumes de la maison (mètres ; x vers la droite, y vers le bas du plan, z vers le haut ; ±0,00 = plancher fini). */
+export interface Modele3D {
+  boites: Boite3D[];
+  faces: Face3D[];
+  terrain: { x: number; y: number; l: number; p: number; z: number };
+  emprise: { x_min: number; x_max: number; y_min: number; y_max: number };
+  niveaux: { terrain: number; assise: number; plancher: number; haut_mur: number; haut: number };
+  toiture: { type: string; pente: number; couverture: string };
+  hypotheses: string[];
+  mention: string;
 }

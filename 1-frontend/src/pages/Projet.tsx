@@ -7,6 +7,7 @@ import { nomFichier, telecharger } from "../lib/telecharger";
 import { MODULES, type Programme, type Projet as TProjet, type Utilisateur } from "../types";
 
 // Onglets chargés à la demande
+const OngletAtelier = lazy(() => import("../components/OngletAtelier"));
 const OngletPlan = lazy(() => import("../components/OngletPlan"));
 const ProgrammeForm = lazy(() => import("../components/ProgrammeForm"));
 const Electricite = lazy(() => import("../components/Electricite"));
@@ -18,6 +19,7 @@ const Metre = lazy(() => import("../components/Metre"));
 const RendusIA = lazy(() => import("../components/RendusIA"));
 
 const ONGLETS = [
+  { id: "atelier", libelle: "Atelier" },
   { id: "plan", libelle: "Plan" },
   { id: "programme", libelle: "Programme" },
   { id: "electricite", libelle: "Électricité" },
@@ -45,7 +47,7 @@ export default function Projet({ id, onglet, utilisateur }: Props) {
   const [enCours, setEnCours] = useState(false);
   const [bilan, setBilan] = useState<Bilan | null>(() => (id !== undefined ? (bilans.get(id) ?? null) : null));
   const [iaConfiguree, setIaConfiguree] = useState<boolean | null>(null);
-  const actif: Onglet = (ONGLETS.find((o) => o.id === onglet)?.id ?? "plan") as Onglet;
+  const actif: Onglet = (ONGLETS.find((o) => o.id === onglet)?.id ?? "atelier") as Onglet;
 
   useEffect(() => {
     api
@@ -94,7 +96,23 @@ export default function Projet({ id, onglet, utilisateur }: Props) {
     };
     bilans.set(p.id, b);
     setBilan(b);
-    if (id === undefined) naviguer({ page: "projet", id: p.id, onglet: "plan" }, true);
+    if (id === undefined) naviguer({ page: "projet", id: p.id, onglet: "atelier" }, true);
+  }
+
+  async function commander(texte: string) {
+    if (!projet) return null;
+    setEnCours(true);
+    setErreur(null);
+    try {
+      const { commande, ...p } = await api.commande(projet.id, texte);
+      setProjet(p as TProjet);
+      return { comprise: commande.comprise, message: commande.message };
+    } catch (e) {
+      setErreur(e instanceof ErreurApi ? e.message : "Erreur inattendue.");
+      return null;
+    } finally {
+      setEnCours(false);
+    }
   }
 
   const recalculer = (programme: Programme) => {
@@ -174,7 +192,7 @@ export default function Projet({ id, onglet, utilisateur }: Props) {
         )}
       </div>
 
-      {(projet === null || peutModifier) && (
+      {(projet === null || (peutModifier && actif !== "atelier")) && (
         <BarreIA texteInitial={projet?.texte_initial ?? ""} iaConfiguree={iaConfiguree} enCours={enCours} bilan={bilan} onGenerer={generer} />
       )}
       {erreur && <MessageErreur message={erreur} onReessayer={projet ? undefined : id !== undefined ? charger : undefined} />}
@@ -202,6 +220,7 @@ export default function Projet({ id, onglet, utilisateur }: Props) {
           </nav>
           <div className="contenu-onglet" role="tabpanel">
             <Suspense fallback={<Chargement />}>
+              {actif === "atelier" && <OngletAtelier projet={projet} enCours={enCours} peutModifier={peutModifier} onCommande={commander} />}
               {actif === "plan" && <OngletPlan projet={projet} />}
               {actif === "programme" &&
                 (peutModifier ? (

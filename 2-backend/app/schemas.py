@@ -42,6 +42,10 @@ class DemandeGenerer(BaseModel):
     projet_id: int | None = Field(None, description="Relance le pipeline sur un projet existant (validations annulées)")
 
 
+class DemandeCommande(BaseModel):
+    texte: str = Field(min_length=1, max_length=1000)
+
+
 class DemandeValidation(BaseModel):
     module: str = Field(pattern="^(" + "|".join(MODULES) + ")$")
     commentaire: str = Field("", max_length=2000)

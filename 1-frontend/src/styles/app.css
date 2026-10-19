@@ -209,3 +209,41 @@ textarea { resize: vertical; width: 100%; }
 .vignette-rendu .actions { margin-top: 6px; }
 .vignette-vide { aspect-ratio: 16 / 9; display: grid; place-items: center; color: var(--texte-2); }
 .mention-rendu { margin-top: 4px; font-size: 0.8rem; font-weight: 500; color: var(--avert); }
+
+/* Atelier : fondation | élévation + 3D */
+.commandes { background: var(--surface); border: 1px solid var(--bordure); border-radius: 10px; padding: 12px 14px; display: grid; gap: 10px; }
+.commandes h2 { margin: 0; font-size: 1.05rem; }
+.echanges { display: grid; gap: 8px; max-height: 240px; overflow-y: auto; padding-right: 4px; }
+.echange { display: grid; gap: 2px; }
+.echange .vous { margin: 0; justify-self: end; max-width: 85%; background: var(--accent); color: var(--accent-texte); padding: 6px 10px; border-radius: 12px 12px 2px 12px; font-size: 0.92rem; }
+.echange .reponse { margin: 0; justify-self: start; max-width: 92%; background: var(--fond); border: 1px solid var(--bordure); padding: 6px 10px; border-radius: 12px 12px 12px 2px; font-size: 0.92rem; }
+.echange.annulee { opacity: 0.55; }
+.echange.annulee .vous { text-decoration: line-through; }
+.saisie-commande { display: flex; gap: 8px; }
+.saisie-commande input { flex: 1; min-width: 0; }
+.suggestions { display: flex; flex-wrap: wrap; gap: 6px; }
+.puce { font: inherit; font-size: 0.85rem; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--bordure); background: var(--fond); color: var(--texte); cursor: pointer; }
+.puce:hover:not(:disabled) { border-color: var(--accent); }
+.puce:disabled { opacity: 0.5; cursor: default; }
+.alerte-atelier { margin: 0; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--bloquant); color: var(--bloquant); background: var(--surface); font-size: 0.92rem; }
+.atelier { display: grid; gap: 12px; }
+.atelier-grille { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: start; }
+.atelier-droite { display: grid; gap: 12px; min-width: 0; }
+.carte-atelier { display: grid; gap: 8px; min-width: 0; }
+.carte-atelier h2 { margin: 0; font-size: 1.05rem; }
+.atelier-fondation .plan-cadre { height: min(78vh, 820px); }
+.atelier-elevation .plan-cadre { height: min(34vh, 320px); }
+.segment { display: flex; gap: 4px; }
+.segment .bouton.actif { background: var(--accent); color: var(--accent-texte); border-color: var(--accent); }
+.maquette { position: relative; border: 1px solid var(--bordure); border-radius: 10px; overflow: hidden; background: var(--plan-fond); }
+.maquette-outils { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 6px 8px; border-bottom: 1px solid var(--bordure); background: var(--surface); }
+.maquette-outils .bouton { padding: 4px 10px; min-height: 32px; }
+.maquette-zone { height: min(46vh, 460px); touch-action: none; }
+.maquette-zone canvas { display: block; }
+.maquette-erreur { padding: 16px; margin: 0; }
+.hypotheses-3d { font-size: 0.88rem; color: var(--texte-2); }
+.hypotheses-3d ul { margin: 6px 0; padding-left: 18px; }
+@media (max-width: 900px) {
+  .atelier-grille { grid-template-columns: minmax(0, 1fr); }
+  .atelier-fondation .plan-cadre { height: min(60vh, 520px); }
+}

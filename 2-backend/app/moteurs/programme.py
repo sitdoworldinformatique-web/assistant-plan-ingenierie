@@ -95,14 +95,15 @@ def _cherche(motif: str, t: str) -> re.Match | None:
     return re.search(motif, t)
 
 
-def analyser(texte: str) -> tuple[Programme, list[str]]:
-    """Transforme un texte libre en `Programme` + liste de remarques (ambiguïtés)."""
+def _extraire(texte: str, commande: bool = False) -> tuple[dict, list[str]]:
+    """Champs du `Programme` que le texte donne explicitement + remarques. En mode commande, le texte ne
+    complète qu'un programme existant : pas de remarque sur les données absentes."""
     t = _normaliser(texte)
     v: dict = {}
     remarques: list[str] = []
 
     # Nom
-    if "villa" in t:
+    if "villa" in t and not commande:
         v["nom"] = "Villa"
 
     # Niveaux
@@ -169,7 +170,7 @@ def analyser(texte: str) -> tuple[Programme, list[str]]:
     if m:
         v["terrain_largeur"] = _flottant(m.group(1))
         v["terrain_profondeur"] = _flottant(m.group(2))
-    else:
+    elif not commande:
         remarques.append("Dimensions du terrain non précisées : 15 × 20 m retenu par défaut.")
 
     m = _cherche(r"recul(?: \w+){0,2}? (?:de )?" + _F + r" ?m\b", t)
@@ -272,7 +273,7 @@ def analyser(texte: str) -> tuple[Programme, list[str]]:
     m = _cherche(r"(?:resistance de (?:la )?terre|prise de terre|terre)(?: \w+){0,2}? (?:de )?" + _F + r" ?ohms?", t)
     if m:
         v["resistance_terre"] = _flottant(m.group(1))
-    else:
+    elif not commande:
         remarques.append("Résistance de la prise de terre non fournie : mesure sur site requise.")
 
     # Solaire
@@ -293,4 +294,10 @@ def analyser(texte: str) -> tuple[Programme, list[str]]:
     elif re.search(r"\beur\b|euros?", t):
         v["devise"] = "EUR"
 
+    return v, remarques
+
+
+def analyser(texte: str) -> tuple[Programme, list[str]]:
+    """Transforme un texte libre en `Programme` + liste de remarques (ambiguïtés)."""
+    v, remarques = _extraire(texte)
     return Programme(**v), remarques

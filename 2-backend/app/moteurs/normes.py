@@ -145,6 +145,26 @@ STRUCTURE = {
 }
 
 # ---------------------------------------------------------------------------
+# Élévation et modèle 3D (hauteurs conventionnelles, repère : ±0,00 = plancher fini)
+# ---------------------------------------------------------------------------
+ELEVATION = {
+    "reference": "Conventions de dessin d'architecte ; fondations à confirmer par l'étude de sol",
+    "terrain_sous_plancher": 0.20,  # le plancher fini est 20 cm au-dessus du terrain naturel
+    "assise_sous_terrain": 0.80,  # niveau d'assise de la semelle sous le terrain naturel (hors gel, sol porteur)
+    "allege_fenetre": 0.90,
+    "allege_haute": 1.60,  # fenêtre de salle d'eau
+    "seuil_porte_fenetre": 2.00,  # une ouverture au moins aussi haute est une porte-fenêtre (allège 0)
+    "hauteur_chainage": 0.20,
+    "hauteur_veranda": 2.60,
+    "poteau_veranda": 0.20,
+    "entraxe_poteaux_veranda": 3.0,
+    "epaisseur_toiture_3d": 0.08,
+    "epaisseur_dalle_terrasse": 0.15,
+    "hauteur_acrotere": 0.40,
+    "terrain_marge_vue": 1.5,  # marge de terrain dessinée de chaque côté de la maison dans l'élévation
+}
+
+# ---------------------------------------------------------------------------
 # Toiture
 # ---------------------------------------------------------------------------
 TOITURE = {

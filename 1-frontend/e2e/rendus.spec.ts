@@ -16,7 +16,7 @@ test("rendus IA : sans clé, puis avec un service simulé", async ({ page }, inf
   await page.getByLabel("Description de la maison").fill("Villa 3 chambres avec véranda, terrain 18 m sur 20 m");
   await page.getByRole("button", { name: "Générer" }).click();
   await expect(page.getByRole("navigation", { name: "Onglets du projet" })).toBeVisible();
-  const projet = page.url().replace(/\/plan$/, "");
+  const projet = page.url().replace(/\/(plan|atelier)$/, "");
 
   // 1. Sans clé : message clair, pas de bouton
   await page.goto(`${projet}/rendus`);

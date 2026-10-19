@@ -19,7 +19,7 @@ from typing import Any, Protocol
 
 from pydantic import ValidationError
 
-from app.moteurs import chaine, regles
+from app.moteurs import chaine, commandes, regles
 from app.moteurs.commun import fmt
 from app.moteurs.normes import VERSION_MOTEURS
 from app.moteurs.programme import CHAMPS_TERRAIN, Programme, analyser
@@ -98,6 +98,51 @@ def interpreter(texte: str, ia: ClientIA | None, journal: Journal) -> tuple[Prog
     prog, remarques = analyser(texte)
     journal.ajouter("interpreter", texte, prog.model_dump(), "analyseur-par-regles", debut)
     return prog, remarques
+
+
+def commander(texte: str, courant: Programme, surface_sejour: float | None, ia: ClientIA | None,
+              journal: Journal) -> tuple[Programme, list[commandes.Changement], list[str], str]:
+    """Commande en langage naturel → programme modifié. Claude si configuré, sinon (ou en cas d'échec) les règles.
+
+    Renvoie (programme, changements, remarques, source). Les données de terrain ne viennent jamais de l'IA."""
+    prog_regles, ch_regles, rem_regles = commandes.appliquer(courant, texte, surface_sejour)
+    if ia is not None:
+        debut = time.perf_counter()
+        demande = ("Programme actuel (JSON) :\n" + json.dumps(courant.model_dump(mode="json"), ensure_ascii=False)
+                   + "\n\nCommande du constructeur : " + texte
+                   + "\n\nRenvoie le programme complet après application de cette seule commande ;"
+                   " ne change aucun autre champ.")
+        try:
+            brut = ia.interpreter(demande, Programme.model_json_schema())
+            remarques = brut.pop("remarques", []) if isinstance(brut, dict) else []
+            prog_ia = Programme(**brut)
+            prog = prog_ia.model_copy(update={c: getattr(prog_regles, c) for c in CHAMPS_TERRAIN})
+            changements = commandes.differences(courant, prog)
+            journal.ajouter("commander", texte, [c.en_dict() for c in changements], ia.modele, debut)
+            return prog, changements, [str(r) for r in remarques], "ia"
+        except Exception as e:
+            journal.ajouter("commander", texte, f"erreur : {e.__class__.__name__}", ia.modele, debut, erreur=True)
+    return prog_regles, ch_regles, rem_regles, "regles"
+
+
+def message_commande(changements: list[commandes.Changement], avant: dict, apres: chaine.Resultats) -> str:
+    """Réponse en français à une commande : ce qui a changé, puis ce que les moteurs en disent."""
+    if not changements:
+        return "Rien n'a changé."
+    texte = "C'est fait. " + " ; ".join(commandes.decrire(c) for c in changements) + "."
+    avant_bloquants = {c["id"] for c in avant.get("controles", []) if c["niveau"] == "bloquant"}
+    bloquants = [c for c in apres.controles if c.niveau == "bloquant"]
+    nouveaux = [c for c in bloquants if c.id not in avant_bloquants]
+    resolus = len(avant_bloquants - {c.id for c in bloquants})
+    if nouveaux:
+        texte += " Attention, les moteurs signalent : " + " ; ".join(f"{c.titre} ({c.detail})" for c in nouveaux[:2]) + "."
+    elif bloquants:
+        texte += f" {len(bloquants)} point(s) bloquant(s) restent à lever (voir l'onglet Validation)."
+    elif resolus:
+        texte += f" {resolus} point(s) bloquant(s) levé(s) : plus aucun blocage."
+    else:
+        texte += " Aucun point bloquant."
+    return texte
 
 
 def corriger(programme: Programme, resultats: chaine.Resultats, ia: ClientIA | None, journal: Journal,

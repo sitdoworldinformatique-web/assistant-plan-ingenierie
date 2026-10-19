@@ -48,7 +48,7 @@ test("l'admin change un prix et le devis le reprend", async ({ page }, info) => 
   await page.getByLabel("Description de la maison").fill("Maison 2 chambres, terrain 18 m sur 20 m");
   await page.getByRole("button", { name: "Générer" }).click();
   await expect(page.getByRole("navigation", { name: "Onglets du projet" })).toBeVisible();
-  const projet = page.url().replace(/\/plan$/, "");
+  const projet = page.url().replace(/\/(plan|atelier)$/, "");
   await ouvrir(page, "Métré & devis");
   const total = page.getByRole("row", { name: /Total estimatif/ });
   const avant = await total.textContent();

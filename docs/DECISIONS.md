@@ -17,6 +17,7 @@ Chaque choix non couvert par le cahier des charges est noté ici (option la plus
 | 9 | fait — connecteur branché : plan rasterisé en PNG 2048 px dans le navigateur, `POST/GET /rendus`, quota journalier, bandeau « non contractuelle » ajouté par Pillow, galerie ; e2e avec service simulé |
 | 10 | fait — `plan.dxf` (ezdxf, calques MURS/PORTES/FENETRES/COTES/TEXTES/ELEC/STRUCTURE, unité cm), `dossier.pdf` (A4 paysage, plan à l'échelle avec cartouche, puis synthèse, contrôles, électricité, structure, toiture/solaire, métré, hypothèses), `metre.xlsx` (formules) ; boutons d'export et e2e de téléchargement |
 | 11 | fait — `docker-compose.prod.yml` (base avec volume, API gunicorn + Alembic, nginx gzip/cache, certbot), sauvegarde, CI GitHub Actions, `DEPLOIEMENT.md` ; non testé : construction des images Docker (pas de démon Docker dans l'environnement de développement), vérifiée par la CI |
+| 12 | fait — onglet **Atelier** (défaut) : description libre puis commandes en français étape par étape (`POST /commande`, annulation), plan de fondation à gauche, élévation SVG et maquette 3D (three.js) à droite, tous issus des mêmes volumes ; e2e `atelier.spec.ts` |
 
 ## Décisions
 
@@ -226,3 +227,24 @@ conteneur ; `alembic check` en CI garantit que la migration suit les modèles). 
 (modèle nginx HTTP seul puis HTTPS, variable `NGINX_MODELE`). Les images Docker n'ont pas pu être construites dans cet
 environnement (pas de démon Docker) : le fichier compose est validé par `docker compose config`, la construction des deux
 images est un travail de la CI.
+
+### D-037 — Élévations et maquette 3D : une seule source de volumes
+`rendu/volumes.construire` produit des boîtes (murs découpés autour des baies, chaînage, semelles, soubassement, dalle,
+véranda, acrotère) et des faces (toiture 2 pans, 4 pans, pignons) à partir des résultats des moteurs. L'élévation SVG
+(projection orthogonale, algorithme du peintre) et la maquette 3D les lisent toutes deux : elles ne peuvent pas se
+contredire avec le plan. Repère : x vers la droite, y vers le bas du plan, façade principale à y max ; plancher fini = ±0,00.
+Les cotes de niveau (terrain 0,20 m sous le plancher, assise 0,80 m, allèges 0,90/1,60 m, etc.) sont dans
+`normes.ELEVATION`. Image indicative et non contractuelle, mention portée par le dessin ; hypothèses listées sous la maquette.
+
+### D-038 — Commandes en langage naturel
+`moteurs/commandes.appliquer` applique une commande au programme courant (fonction pure) : variations relatives
+(« ajoute une chambre », « agrandis le séjour de 5 m² ») prioritaires sur la lecture absolue, retraits, toiture, terrain.
+L'IA texte, si configurée, élargit la compréhension ; `portance_sol`, `portance_mesuree`, `resistance_terre` et le terrain
+viennent toujours des règles (jamais de l'IA). Chaque commande est une version du projet, journalisée avec le programme
+précédent ; « annule » restaure le programme avant la dernière commande non annulée. Une commande non comprise ne
+change rien et le dit, avec des exemples. Toute modification annule les validations (empreinte, D-026).
+
+### D-039 — three.js chargé à la demande
+La maquette 3D utilise three.js 0.170 (OrbitControls), chargé en import dynamique à l'ouverture de l'Atelier : le
+bundle principal reste léger pour les connexions lentes. L'avertissement de taille de Vite concerne ce seul chunk.
+Sans WebGL, un message remplace la maquette ; l'élévation et le plan restent disponibles.

@@ -23,11 +23,11 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app import config as config_mod
 from app import ia, orchestrateur, schemas, stockage
 from app.auth import ErreurApi, creer_jeton, exiger_role, hacher, utilisateur_courant, verifier
-from app.moteurs import chaine
+from app.moteurs import chaine, commandes
 from app.moteurs.normes import VERSION_MOTEURS
 from app.moteurs.programme import Programme
 from app.moteurs.regles import MODULES
-from app.rendu import dxf, images, pdf, plan_svg, rapport, unifilaire, xlsx
+from app.rendu import dxf, elevation_svg, images, pdf, plan_svg, rapport, unifilaire, volumes, xlsx
 from app.stockage import PrixMateriau, Projet, Rendu, Utilisateur, Validation
 
 log = logging.getLogger("api")
@@ -231,6 +231,51 @@ def modifier_programme(projet_id: int, programme: Programme, u: Utilisateur = De
     return _detail(s, p)
 
 
+@app.post("/api/projets/{projet_id}/commande", tags=["projets"])
+def commande(projet_id: int, d: schemas.DemandeCommande, u: Utilisateur = Depends(utilisateur_courant),
+             s: Session = Depends(stockage.session), client=Depends(ia.client_texte)) -> dict:
+    """Modifie le programme par une commande en français (« ajoute une chambre ») et recalcule tout."""
+    p = _charger(s, projet_id, u, ecriture=True)
+    courant = Programme(**p.programme)
+    sejour = next((x["surface_nette"] for x in p.resultats["implantation"]["pieces"] if x["type"] == "sejour"), None)
+    journal = orchestrateur.Journal()
+    annulee = None
+    if commandes.est_annulation(d.texte):
+        annulee = next((i for i in range(len(p.journal_ia) - 1, -1, -1)
+                        if p.journal_ia[i].get("etape") == "commande" and p.journal_ia[i].get("programme_avant")
+                        and not p.journal_ia[i].get("annulee") and not p.journal_ia[i].get("annulation")), None)
+        if annulee is None:
+            return {**_detail(s, p), "commande": {"texte": d.texte, "comprise": False, "changements": [],
+                                                  "remarques": [], "source": "regles",
+                                                  "message": "Il n'y a aucune étape à annuler."}}
+        nouveau, remarques, source = Programme(**p.journal_ia[annulee]["programme_avant"]), [], "regles"
+        changements = commandes.differences(courant, nouveau)
+    else:
+        nouveau, changements, remarques, source = orchestrateur.commander(d.texte, courant, sejour, client, journal)
+    if not changements:
+        return {**_detail(s, p), "commande": {"texte": d.texte, "comprise": False, "changements": [],
+                                              "remarques": remarques, "source": source,
+                                              "message": remarques[0] if remarques else "Rien n'a changé."}}
+    avant = p.resultats
+    res = orchestrateur.generer(None, nouveau, None, stockage.table_prix(s))
+    message = orchestrateur.message_commande(changements, avant, res["resultats"])
+    if annulee is not None:
+        message = message.replace("C'est fait.", "Dernière étape annulée.", 1)
+    journal.ajouter("commande", d.texte, [c.en_dict() for c in changements], source, perf_counter(),
+                    programme_avant=courant.model_dump(mode="json"), message=message,
+                    **({"annulation": True} if annulee is not None else {}))
+    historique = list(p.journal_ia)
+    if annulee is not None:
+        historique[annulee] = {**historique[annulee], "annulee": True}
+    p.journal_ia = [*historique, *journal.entrees]
+    p.remarques = remarques
+    _appliquer(p, res)
+    p.version += 1
+    s.commit()
+    return {**_detail(s, p), "commande": {"texte": d.texte, "comprise": True, "source": source, "message": message,
+                                          "changements": [c.en_dict() for c in changements], "remarques": remarques}}
+
+
 @app.post("/api/projets/{projet_id}/expliquer", tags=["ia"])
 def expliquer(projet_id: int, d: schemas.DemandeExpliquer, u: Utilisateur = Depends(utilisateur_courant),
               s: Session = Depends(stockage.session), client=Depends(ia.client_texte)) -> dict:
@@ -261,6 +306,23 @@ def supprimer(projet_id: int, u: Utilisateur = Depends(utilisateur_courant),
     s.delete(p)
     s.commit()
     return Response(status_code=204)
+
+
+@app.get("/api/projets/{projet_id}/elevation.svg", tags=["exports"])
+def elevation(projet_id: int, vue: str = Query("facade", description="facade ou pignon"),
+              u: Utilisateur = Depends(utilisateur_courant), s: Session = Depends(stockage.session)) -> Response:
+    if vue not in elevation_svg.VUES:
+        raise ErreurApi(422, "vue_inconnue", f"Vue inconnue : {vue}. Valeurs : {', '.join(elevation_svg.VUES)}.")
+    p = _charger(s, projet_id, u)
+    r = chaine.Resultats.model_validate(p.resultats)
+    return Response(elevation_svg.rendre_elevation(r, Programme(**p.programme), vue), media_type="image/svg+xml")
+
+
+@app.get("/api/projets/{projet_id}/modele3d.json", tags=["exports"])
+def modele3d(projet_id: int, u: Utilisateur = Depends(utilisateur_courant),
+             s: Session = Depends(stockage.session)) -> dict:
+    p = _charger(s, projet_id, u)
+    return volumes.construire(chaine.Resultats.model_validate(p.resultats), Programme(**p.programme))
 
 
 @app.get("/api/projets/{projet_id}/plan.svg", tags=["exports"])

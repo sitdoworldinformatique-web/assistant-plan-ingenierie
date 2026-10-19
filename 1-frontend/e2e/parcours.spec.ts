@@ -20,7 +20,10 @@ test("texte → plan affiché → export SVG", async ({ page }, info) => {
     .fill("Villa de 3 chambres avec salon, cuisine fermée, une salle de bain, WC séparé et véranda, sur un terrain de 18 m sur 20 m");
   await page.getByRole("button", { name: "Générer" }).click();
 
-  await expect(page).toHaveURL(/#\/projets\/\d+\/plan$/);
+  await expect(page).toHaveURL(/#\/projets\/\d+\/atelier$/);
+  const menuPlan = page.getByRole("combobox", { name: "Onglet" });
+  if (await menuPlan.isVisible()) await menuPlan.selectOption({ label: "Plan" });
+  else await page.getByRole("tab", { name: "Plan", exact: true }).click();
   await expect(page.getByText("analyseur par règles (IA non configurée)")).toBeVisible();
   const plan = page.getByTestId("plan");
   await expect(plan.locator("svg rect.piece").first()).toBeVisible();
@@ -53,7 +56,7 @@ test("onglets programme, électricité et validation", async ({ page }, info) =>
   await page.getByRole("link", { name: "+ Nouveau projet" }).click();
   await page.getByLabel("Description de la maison").fill("Maison 2 chambres, terrain 16 m sur 20 m");
   await page.getByRole("button", { name: "Générer" }).click();
-  await expect(page).toHaveURL(/#\/projets\/\d+\/plan$/);
+  await expect(page).toHaveURL(/#\/projets\/\d+\/atelier$/);
 
   await expect(page.getByRole("navigation", { name: "Onglets du projet" })).toBeVisible();
   const ouvrir = async (nom: string) => {

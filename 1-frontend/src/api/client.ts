@@ -1,6 +1,6 @@
 // Client de l'API : jeton JWT, erreurs {code, message} en français, reprise sur coupure réseau.
 
-import type { ListeRendus, Module, PrixMateriau, RenduIA, Programme, Projet, ResumeProjet, Role, Sante, Utilisateur, Validation } from "../types";
+import type { ListeRendus, Modele3D, ReponseCommande, Module, PrixMateriau, RenduIA, Programme, Projet, ResumeProjet, Role, Sante, Utilisateur, Validation } from "../types";
 
 const CLE_JETON = "api.jeton";
 
@@ -121,6 +121,11 @@ export const api = {
   unifilaireSvg: (id: number) => requete<string>(`/api/projets/${id}/unifilaire.svg`, { format: "texte" }),
   exporter: (id: number, fichier: "plan.dxf" | "dossier.pdf" | "metre.xlsx") =>
     requete<Blob>(`/api/projets/${id}/${fichier}`, { format: "blob" }),
+  elevation: (id: number, vue: "facade" | "pignon") =>
+    requete<string>(`/api/projets/${id}/elevation.svg?vue=${vue}`, { format: "texte" }),
+  modele3d: (id: number) => requete<Modele3D>(`/api/projets/${id}/modele3d.json`),
+  commande: (id: number, texte: string) =>
+    requete<ReponseCommande>(`/api/projets/${id}/commande`, { methode: "POST", corps: { texte } }),
   rapport: (id: number) => requete<string>(`/api/projets/${id}/rapport.txt`, { format: "texte" }),
   expliquer: (id: number, element_id: string) =>
     requete<{ element_id: string; texte: string; source: "ia" | "regles" }>(`/api/projets/${id}/expliquer`, {

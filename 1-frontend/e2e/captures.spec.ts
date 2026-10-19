@@ -17,13 +17,16 @@ test("captures des écrans du lot 7", async ({ page }, info) => {
     .getByLabel("Description de la maison")
     .fill("Villa de 3 chambres avec salon, cuisine fermée, une salle de bain, WC séparé et véranda, sur un terrain de 18 m sur 20 m");
   await page.getByRole("button", { name: "Générer" }).click();
+  const menuPlan = page.getByRole("combobox", { name: "Onglet" });
+  if (await menuPlan.isVisible()) await menuPlan.selectOption({ label: "Plan" });
+  else await page.getByRole("tab", { name: "Plan", exact: true }).click();
   await expect(page.getByTestId("plan").locator("svg rect.piece").first()).toBeVisible();
   await page.getByTestId("plan").locator('svg rect.piece[data-piece="SEJ"]').click({ force: true });
   await page.screenshot({ path: `${dossier}/lot7-plan-${nom}.png`, fullPage: true });
   await page.emulateMedia({ colorScheme: "dark" });
   await page.screenshot({ path: `${dossier}/lot7-plan-${nom}-sombre.png`, fullPage: true });
   await page.emulateMedia({ colorScheme: "light" });
-  const url = page.url().replace(/\/plan$/, "");
+  const url = page.url().replace(/\/(plan|atelier)$/, "");
   for (const onglet of ["electricite", "validation", "programme", "structure", "toiture", "solaire", "metre"]) {
     await page.goto(`${url}/${onglet}`);
     await page.waitForLoadState("networkidle");
