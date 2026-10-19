@@ -516,3 +516,11 @@ def modifier_utilisateur(utilisateur_id: int, d: schemas.ModifUtilisateur,
     x.role, x.numero_ordre = d.role, d.numero_ordre
     s.commit()
     return _utilisateur(x)
+
+
+# Essai local sans nginx : INTERFACE_DIR=<dossier dist> sert l'interface construite sur le même port que l'API.
+_interface = os.getenv("INTERFACE_DIR", "")
+if _interface and os.path.isfile(os.path.join(_interface, "index.html")):
+    from fastapi.staticfiles import StaticFiles
+
+    app.mount("/", StaticFiles(directory=_interface, html=True), name="interface")
