@@ -165,3 +165,55 @@ def test_mention_sur_plusieurs_lignes_si_image_etroite():
     assert large.format == "JPEG" and etroite.size[0] == 200
     assert large.size[1] - 1000 == round(2000 / 70 * 1.25) + 2 * round(2000 / 70 * 0.6)  # une seule ligne
     assert etroite.size[1] - 100 >= 3 * round(12 * 1.25)  # au moins trois lignes, rien de coupé
+
+
+def test_stockage_supabase_ecriture_lecture_suppression(client, projet, monkeypatch):
+    """Avec SUPABASE_URL et la clé service_role, l'image part dans le bucket privé, pas sur le disque."""
+    from app.rendu import fichiers
+
+    monkeypatch.setenv("SUPABASE_URL", "https://abc.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_KEY", "cle-service-secrete")
+    monkeypatch.setenv("SUPABASE_BUCKET", "rendus")
+    objets: dict[str, bytes] = {}
+    vus: list[httpx.Request] = []
+
+    def stockage(req: httpx.Request) -> httpx.Response:
+        vus.append(req)
+        chemin = req.url.path.removeprefix("/storage/v1/object/rendus/")
+        if req.method == "POST":
+            objets[chemin] = req.content
+            return httpx.Response(200, json={"Key": chemin})
+        if req.method == "GET":
+            return httpx.Response(200, content=objets[chemin]) if chemin in objets else httpx.Response(404)
+        objets.pop(chemin, None)
+        return httpx.Response(200, json={})
+
+    monkeypatch.setattr(fichiers, "_client", lambda: httpx.Client(transport=httpx.MockTransport(stockage)))
+    pid, h = projet
+    app.dependency_overrides[ia.client_image] = lambda: FauxImages()
+    r = client.post(f"/api/projets/{pid}/rendus", json={"style": "realiste", "image_base64": PLAN}, headers=h)
+    assert r.status_code == 201, r.text
+    assert len(objets) == 1 and next(iter(objets)).startswith(f"{pid}/")
+    assert all(v.headers["authorization"] == "Bearer cle-service-secrete" for v in vus)
+    assert objets[next(iter(objets))][:2] == b"\xff\xd8"  # JPEG avec mention
+
+    img = client.get(r.json()["url"], headers=h)
+    assert img.status_code == 200 and img.content[:2] == b"\xff\xd8"
+    assert client.get(r.json()["url"]).status_code == 401  # l'image n'est jamais publique
+
+    assert client.delete(f"/api/projets/{pid}/rendus/{r.json()['id']}", headers=h).status_code == 204
+    assert objets == {}
+
+
+def test_stockage_supabase_en_panne(client, projet, monkeypatch):
+    from app.rendu import fichiers
+
+    monkeypatch.setenv("SUPABASE_URL", "https://abc.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_KEY", "cle")
+    monkeypatch.setattr(fichiers, "_client", lambda: httpx.Client(
+        transport=httpx.MockTransport(lambda req: httpx.Response(500))))
+    pid, h = projet
+    app.dependency_overrides[ia.client_image] = lambda: FauxImages()
+    r = client.post(f"/api/projets/{pid}/rendus", json={"style": "facade", "image_base64": PLAN}, headers=h)
+    assert r.status_code == 503 and r.json()["code"] == "stockage_indisponible"
+    assert client.get(f"/api/projets/{pid}/rendus", headers=h).json()["rendus"] == []

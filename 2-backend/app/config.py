@@ -26,12 +26,20 @@ class Config:
     )
     stockage_rendus: str = field(default_factory=lambda: os.getenv("STOCKAGE_RENDUS", "./donnees/rendus"))
 
+    supabase_url: str = field(default_factory=lambda: os.getenv("SUPABASE_URL", ""))
+    supabase_service_key: str = field(default_factory=lambda: os.getenv("SUPABASE_SERVICE_KEY", ""))
+    supabase_bucket: str = field(default_factory=lambda: os.getenv("SUPABASE_BUCKET", "rendus"))
+
     environnement: str = field(default_factory=lambda: os.getenv("ENVIRONNEMENT", "dev"))
 
     def verifier(self) -> None:
         """En production, refuse de démarrer avec la clé de signature de développement ou un secret trop court."""
         if self.environnement == "production" and (self.jwt_secret == SECRET_DEV or len(self.jwt_secret) < 32):
             raise RuntimeError("JWT_SECRET doit être défini (32 caractères minimum) quand ENVIRONNEMENT=production.")
+
+    @property
+    def supabase_configure(self) -> bool:
+        return bool(self.supabase_url and self.supabase_service_key)
 
     @property
     def ia_texte_configuree(self) -> bool:

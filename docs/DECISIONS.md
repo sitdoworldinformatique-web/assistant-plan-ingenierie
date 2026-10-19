@@ -258,3 +258,10 @@ n'est pas retenté automatiquement pour la même empreinte (bouton « Générer 
 « non contractuelle » (bandeau ajouté côté serveur). L'image ne sert jamais de source de calcul.
 Clé : variable d'environnement `GEMINI_API_KEY` du serveur (jamais dans le dépôt ni dans le navigateur).
 
+### D-041 — Supabase : base PostgreSQL et stockage des images
+Supabase n'est utilisé que comme PostgreSQL géré (`DATABASE_URL`, session pooler) et Storage pour les rendus ; l'authentification
+reste la nôtre (JWT). Migration `a1c0de5b9a01` : RLS activée sans politique sur toutes les tables, pour fermer l'API REST
+publique (le rôle propriétaire utilisé par l'application la contourne). Rendus : `rendu/fichiers.py` écrit sur le disque ou,
+si `SUPABASE_URL` et `SUPABASE_SERVICE_KEY` sont définis, dans un bucket privé via l'API REST ; la clé en base commence par
+`supabase:` pour les fichiers distants, donc les deux modes coexistent. La clé `service_role` reste côté serveur.
+

@@ -3,10 +3,8 @@ from __future__ import annotations
 
 import logging
 import os
-import uuid
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime, time
-from pathlib import Path
 from time import perf_counter
 
 from apiconnect import nano_banana
@@ -15,7 +13,7 @@ from fastapi import Depends, FastAPI, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response
+from fastapi.responses import JSONResponse, PlainTextResponse, Response
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -27,7 +25,7 @@ from app.moteurs import chaine, commandes
 from app.moteurs.normes import VERSION_MOTEURS
 from app.moteurs.programme import Programme
 from app.moteurs.regles import MODULES
-from app.rendu import dxf, elevation_svg, images, pdf, plan_svg, rapport, unifilaire, volumes, xlsx
+from app.rendu import dxf, elevation_svg, fichiers, images, pdf, plan_svg, rapport, unifilaire, volumes, xlsx
 from app.stockage import PrixMateriau, Projet, Rendu, Utilisateur, Validation
 
 log = logging.getLogger("api")
@@ -301,7 +299,7 @@ def supprimer(projet_id: int, u: Utilisateur = Depends(utilisateur_courant),
     for v in s.scalars(select(Validation).where(Validation.projet_id == p.id)):
         s.delete(v)
     for r in s.scalars(select(Rendu).where(Rendu.projet_id == p.id)):
-        Path(r.chemin_fichier).unlink(missing_ok=True)
+        fichiers.supprimer(config_mod.charger(), r.chemin_fichier)
         s.delete(r)
     s.delete(p)
     s.commit()
@@ -464,11 +462,11 @@ def creer_rendu(projet_id: int, d: schemas.DemandeRendu, u: Utilisateur = Depend
     except Exception as e:
         raise ErreurApi(502, "rendu_invalide", "Le service d'images a renvoyé une image illisible.") from e
 
-    dossier = Path(cfg.stockage_rendus) / str(p.id)
-    dossier.mkdir(parents=True, exist_ok=True)
-    chemin = dossier / f"{uuid.uuid4().hex}.jpg"
-    chemin.write_bytes(jpeg)
-    r = Rendu(projet_id=p.id, utilisateur_id=u.id, style=d.style, chemin_fichier=str(chemin), prompt=rendu.prompt,
+    try:
+        cle = fichiers.ecrire(cfg, p.id, jpeg)
+    except fichiers.StockageIndisponible as e:
+        raise ErreurApi(503, "stockage_indisponible", f"{e} Réessayez dans une minute.") from e
+    r = Rendu(projet_id=p.id, utilisateur_id=u.id, style=d.style, chemin_fichier=cle, prompt=rendu.prompt,
               modele=rendu.modele)
     s.add(r)
     journal.ajouter("rendre", {"style": d.style}, f"image {len(jpeg)} octets", rendu.modele, debut)
@@ -480,13 +478,13 @@ def creer_rendu(projet_id: int, d: schemas.DemandeRendu, u: Utilisateur = Depend
 
 @app.get("/api/projets/{projet_id}/rendus/{rendu_id}.jpg", tags=["rendus"])
 def image_rendu(projet_id: int, rendu_id: int, u: Utilisateur = Depends(utilisateur_courant),
-                s: Session = Depends(stockage.session)) -> FileResponse:
+                s: Session = Depends(stockage.session)) -> Response:
     p = _charger(s, projet_id, u)
     r = s.get(Rendu, rendu_id)
-    if r is None or r.projet_id != p.id or not Path(r.chemin_fichier).is_file():
+    contenu = fichiers.lire(config_mod.charger(), r.chemin_fichier) if r is not None and r.projet_id == p.id else None
+    if contenu is None:
         raise ErreurApi(404, "rendu_introuvable", "Image introuvable.")
-    return FileResponse(r.chemin_fichier, media_type="image/jpeg",
-                        headers={"Cache-Control": "private, max-age=86400"})
+    return Response(content=contenu, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=86400"})
 
 
 @app.delete("/api/projets/{projet_id}/rendus/{rendu_id}", tags=["rendus"], status_code=204)
@@ -496,7 +494,7 @@ def supprimer_rendu(projet_id: int, rendu_id: int, u: Utilisateur = Depends(util
     r = s.get(Rendu, rendu_id)
     if r is None or r.projet_id != p.id:
         raise ErreurApi(404, "rendu_introuvable", "Image introuvable.")
-    Path(r.chemin_fichier).unlink(missing_ok=True)
+    fichiers.supprimer(config_mod.charger(), r.chemin_fichier)
     s.delete(r)
     s.commit()
     return Response(status_code=204)

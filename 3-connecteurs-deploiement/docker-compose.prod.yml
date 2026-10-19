@@ -23,7 +23,10 @@ services:
     restart: unless-stopped
     environment:
       ENVIRONNEMENT: production
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-assistant}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-assistant}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-assistant}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-assistant}}
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY:-}
+      SUPABASE_BUCKET: ${SUPABASE_BUCKET:-rendus}
       JWT_SECRET: ${JWT_SECRET:?définir JWT_SECRET (32 caractères minimum) dans .env}
       JWT_DUREE_H: ${JWT_DUREE_H:-24}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
