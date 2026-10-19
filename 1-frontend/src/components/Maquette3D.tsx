@@ -27,6 +27,8 @@ interface Scene {
   rendre: () => void;
   vue: (nom: "face" | "trois-quarts" | "dessus") => void;
   montrer: (o: { toiture: boolean; fondations: boolean }) => void;
+  /** Image PNG de la maison vue de trois quarts, toiture visible, fondations masquées (la vue de l'utilisateur est rétablie). */
+  capturer: () => string;
   liberer: () => void;
 }
 
@@ -156,6 +158,24 @@ function construire(T: Three, OrbitControls: typeof import("three/examples/jsm/c
       groupes.fondations.visible = fondations;
       rendre();
     },
+    capturer: () => {
+      const pos = camera.position.clone();
+      const cible = controles.target.clone();
+      const etat = [groupes.toiture.visible, groupes.fondations.visible, (matiere("terrain", 0) as import("three").MeshStandardMaterial).opacity] as const;
+      groupes.toiture.visible = true;
+      groupes.fondations.visible = false;
+      (matiere("terrain", 0) as import("three").MeshStandardMaterial).opacity = 1;
+      placer("trois-quarts");
+      const png = renderer.domElement.toDataURL("image/png");
+      groupes.toiture.visible = etat[0];
+      groupes.fondations.visible = etat[1];
+      (matiere("terrain", 0) as import("three").MeshStandardMaterial).opacity = etat[2];
+      camera.position.copy(pos);
+      controles.target.copy(cible);
+      controles.update();
+      rendre();
+      return png;
+    },
     liberer: () => {
       obs.disconnect();
       controles.dispose();
@@ -172,7 +192,7 @@ function construire(T: Three, OrbitControls: typeof import("three/examples/jsm/c
 }
 
 /** Maquette 3D de la maison (three.js, chargé à la demande) : rotation, zoom, toiture et fondations affichables. */
-export default function Maquette3D({ modele }: { modele: Modele3D }) {
+export default function Maquette3D({ modele, onCapteur }: { modele: Modele3D; onCapteur?: (capturer: (() => string) | null) => void }) {
   const zone = useRef<HTMLDivElement>(null);
   const scene = useRef<Scene | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -190,10 +210,13 @@ export default function Maquette3D({ modele }: { modele: Modele3D }) {
         courante = construire(T, OrbitControls, el, modele);
         scene.current = courante;
         courante.montrer({ toiture, fondations });
+        const c = courante;
+        onCapteur?.(() => c.capturer());
       })
       .catch(() => !annule && setErreur("Votre navigateur ne peut pas afficher la 3D (WebGL indisponible)."));
     return () => {
       annule = true;
+      onCapteur?.(null);
       courante?.liberer();
       scene.current = null;
     };

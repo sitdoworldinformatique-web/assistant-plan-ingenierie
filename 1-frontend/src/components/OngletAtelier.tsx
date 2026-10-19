@@ -4,6 +4,7 @@ import type { Modele3D, Projet } from "../types";
 import BarreCommandes from "./BarreCommandes";
 import { Chargement, MessageErreur } from "./Etat";
 import PlanViewer from "./PlanViewer";
+import RenduAuto from "./RenduAuto";
 
 const Maquette3D = lazy(() => import("./Maquette3D"));
 
@@ -21,6 +22,7 @@ export default function OngletAtelier({ projet, enCours, peutModifier, onCommand
   const [vue, setVue] = useState<"facade" | "pignon">("facade");
   const [modele, setModele] = useState<Modele3D | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
+  const [capteur, setCapteur] = useState<(() => string) | null>(null);
 
   useEffect(() => {
     let annule = false;
@@ -80,7 +82,7 @@ export default function OngletAtelier({ projet, enCours, peutModifier, onCommand
             <h2 id="titre-3d">Maquette 3D</h2>
             {modele ? (
               <Suspense fallback={<Chargement texte="Chargement de la 3D…" />}>
-                <Maquette3D modele={modele} />
+                <Maquette3D modele={modele} onCapteur={(f) => setCapteur(() => f)} />
               </Suspense>
             ) : (
               <Chargement texte="Calcul des volumes…" />
@@ -97,6 +99,7 @@ export default function OngletAtelier({ projet, enCours, peutModifier, onCommand
               </details>
             )}
           </section>
+          <RenduAuto projet={projet} capteur={capteur} peutModifier={peutModifier} />
         </div>
       </div>
     </div>

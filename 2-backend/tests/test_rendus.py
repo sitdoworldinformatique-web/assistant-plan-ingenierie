@@ -71,7 +71,7 @@ def test_sans_cle_message_clair(client, projet):
     pid, h = projet
     liste = client.get(f"/api/projets/{pid}/rendus", headers=h).json()
     assert liste["ia_image_configuree"] is False and liste["quota"] == {"max": 2, "utilises": 0}
-    assert set(liste["styles"]) == {"plan_meuble", "iso_coupe", "facade", "perspective"}
+    assert set(liste["styles"]) == {"plan_meuble", "iso_coupe", "facade", "perspective", "realiste"}
     r = client.post(f"/api/projets/{pid}/rendus", json={"style": "facade", "image_base64": PLAN}, headers=h)
     assert r.status_code == 503 and r.json()["code"] == "ia_image_non_configuree"
 

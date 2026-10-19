@@ -62,6 +62,12 @@ def test_prompt_gabarit():
         nb.construire_prompt("cubiste", PIECES)
 
 
+def test_prompt_realiste_part_de_la_maquette_3d():
+    p = nb.construire_prompt("realiste", PIECES, "4 pans, tuiles")
+    assert "maquette 3D exacte" in p and "Toiture : 4 pans, tuiles" in p
+    assert "plan technique" not in p and "aucun texte" in p and "ne pas ajouter ni supprimer de volume" in p
+
+
 def test_requete_et_reponse_steps(caplog):
     c, req = _client(_ok(REPONSE_STEPS))
     with caplog.at_level(logging.DEBUG):

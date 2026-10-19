@@ -248,3 +248,13 @@ change rien et le dit, avec des exemples. Toute modification annule les validati
 La maquette 3D utilise three.js 0.170 (OrbitControls), chargé en import dynamique à l'ouverture de l'Atelier : le
 bundle principal reste léger pour les connexions lentes. L'avertissement de taille de Vite concerne ce seul chunk.
 Sans WebGL, un message remplace la maquette ; l'élévation et le plan restent disponibles.
+
+### D-040 — Rendu réaliste automatique (Nano Banana) depuis la maquette 3D
+Nouveau style `realiste` : l'image envoyée à Nano Banana est une capture PNG de la maquette 3D (vue 3/4, toiture
+visible, fondations masquées), avec un prompt dédié qui impose de conserver volumes, toiture, véranda et ouvertures.
+L'Atelier la lance seul 3 s après chaque calcul (case « Automatique », mémorisée dans le navigateur), uniquement si une
+clé est configurée, si le quota journalier le permet et si le dernier rendu est plus ancien que le projet. Un échec
+n'est pas retenté automatiquement pour la même empreinte (bouton « Générer le rendu »). Même quota, même mention
+« non contractuelle » (bandeau ajouté côté serveur). L'image ne sert jamais de source de calcul.
+Clé : variable d'environnement `GEMINI_API_KEY` du serveur (jamais dans le dépôt ni dans le navigateur).
+

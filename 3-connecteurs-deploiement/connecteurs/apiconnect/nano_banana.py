@@ -36,12 +36,16 @@ STYLES: dict[str, str] = {
                "tropicale sobre, ciel clair."),
     "perspective": ("Perspective extérieure : vue d'ensemble à hauteur d'œil, depuis l'avant et un peu de côté, "
                     "la véranda bien visible, jardin tropical sobre."),
+    "realiste": ("Rendu photoréaliste de la maison entière, vue à hauteur d'œil depuis l'avant et un peu de côté, "
+                 "enduits, toiture et menuiseries réalistes, jardin tropical sobre, ciel clair, lumière naturelle."),
 }
+STYLES_MAQUETTE = ("realiste",)  # l'image fournie est une capture de la maquette 3D, pas le plan
 LIBELLES_STYLES = {
     "plan_meuble": "Plan coloré meublé",
     "iso_coupe": "Vue 3D isométrique coupée",
     "facade": "Façade principale",
     "perspective": "Perspective extérieure",
+    "realiste": "Rendu réaliste (depuis la maquette 3D)",
 }
 
 GABARIT_PROMPT = """Rendu de présentation architectural d'une maison individuelle de plain-pied (RDC, climat tropical).
@@ -57,6 +61,20 @@ Consignes strictes :
 - aucun texte, chiffre, cote, logo ou filigrane inventé dans l'image ;
 - style architectural professionnel, lumière naturelle, matériaux adaptés au climat tropical
   (enduits clairs, tôle, carrelage)."""
+
+GABARIT_PROMPT_MAQUETTE = """Rendu photoréaliste d'une maison individuelle de plain-pied (RDC, climat tropical).
+
+Style demandé : {style}
+
+L'image fournie est une capture de la maquette 3D exacte de la maison (volumes, toiture, véranda, portes, fenêtres).
+Pièces :
+{pieces}
+{toiture}
+Consignes strictes :
+- conserver exactement la forme, les proportions, la toiture, la véranda, les portes et les fenêtres de la maquette ;
+- ne pas ajouter ni supprimer de volume, d'étage ou d'ouverture ;
+- aucun texte, chiffre, cote, logo ou filigrane inventé dans l'image ;
+- matériaux adaptés au climat tropical (enduits clairs, tôle ou tuiles selon la toiture indiquée)."""
 
 
 @dataclass(frozen=True)
@@ -79,9 +97,10 @@ def construire_prompt(style: str, pieces: Iterable[dict], toiture: str | None = 
     for p in pieces:
         surface = p.get("surface") or p["largeur"] * p["profondeur"]
         lignes.append(f"- {p['nom']} : {_fmt(p['largeur'])} m × {_fmt(p['profondeur'])} m ({_fmt(surface)} m²)")
-    ligne_toit = f"Toiture : {toiture}.\n" if toiture and style in ("facade", "perspective") else ""
-    return GABARIT_PROMPT.format(style=STYLES[style], pieces="\n".join(lignes) or "- (non précisé)",
-                                 toiture=ligne_toit)
+    ligne_toit = f"Toiture : {toiture}.\n" if toiture and style in ("facade", "perspective", *STYLES_MAQUETTE) else ""
+    gabarit = GABARIT_PROMPT_MAQUETTE if style in STYLES_MAQUETTE else GABARIT_PROMPT
+    return gabarit.format(style=STYLES[style], pieces="\n".join(lignes) or "- (non précisé)",
+                          toiture=ligne_toit)
 
 
 def _blocs_image(noeud: Any) -> Iterable[dict]:
