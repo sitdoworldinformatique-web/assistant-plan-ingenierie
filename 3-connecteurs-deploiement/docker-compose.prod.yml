@@ -1,0 +1,84 @@
+# Production : docker compose -f docker-compose.prod.yml --env-file .env up -d --build  (depuis 3-connecteurs-deploiement/)
+# Voir DEPLOIEMENT.md. Aucun secret dans ce fichier : tout vient de .env (non versionné).
+name: assistant-plan
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-assistant}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?définir POSTGRES_PASSWORD dans .env}
+      POSTGRES_DB: ${POSTGRES_DB:-assistant}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-assistant}"]
+      interval: 5s
+      retries: 20
+
+  backend:
+    build:
+      context: ..
+      dockerfile: 2-backend/Dockerfile
+    restart: unless-stopped
+    environment:
+      ENVIRONNEMENT: production
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-assistant}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-assistant}}
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY:-}
+      SUPABASE_BUCKET: ${SUPABASE_BUCKET:-rendus}
+      JWT_SECRET: ${JWT_SECRET:?définir JWT_SECRET (32 caractères minimum) dans .env}
+      JWT_DUREE_H: ${JWT_DUREE_H:-24}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CLAUDE_MODEL: ${CLAUDE_MODEL:-claude-sonnet-5-5}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      NANO_BANANA_MODEL: ${NANO_BANANA_MODEL:-gemini-nano-banana-2.1}
+      RENDUS_MAX_PAR_JOUR: ${RENDUS_MAX_PAR_JOUR:-10}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      CORS_ORIGINS: https://${DOMAINE:?définir DOMAINE dans .env}
+      STOCKAGE_RENDUS: /srv/donnees/rendus
+      AUTO_CREATE_TABLES: "0"
+    volumes:
+      - rendus:/srv/donnees/rendus
+    depends_on:
+      db: { condition: service_healthy }
+    # Le schéma est créé par Alembic avant de lancer l'API.
+    command: sh -c "alembic upgrade head && exec gunicorn app.main:app -k uvicorn.workers.UvicornWorker -w ${API_WORKERS:-2} -b 0.0.0.0:8000 --timeout 120"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/api/sante', timeout=3)"]
+      interval: 15s
+      retries: 5
+      start_period: 20s
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: 1-frontend/Dockerfile
+    restart: unless-stopped
+
+  proxy:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      DOMAINE: ${DOMAINE}
+    volumes:
+      - ./nginx/${NGINX_MODELE:-nginx.conf.template}:/etc/nginx/templates/default.conf.template:ro
+      - certs:/etc/letsencrypt:ro
+      - webroot:/var/www/certbot:ro
+    depends_on: [backend, frontend]
+
+  # Renouvellement automatique du certificat (obtention initiale : voir DEPLOIEMENT.md).
+  certbot:
+    image: certbot/certbot:latest
+    restart: unless-stopped
+    entrypoint: /bin/sh -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done"
+    volumes:
+      - certs:/etc/letsencrypt
+      - webroot:/var/www/certbot
+
+volumes:
+  db-data:
+  rendus:
+  certs:
+  webroot:

@@ -6,6 +6,18 @@ Chaque choix non couvert par le cahier des charges est noté ici (option la plus
 | Lot | État |
 |---|---|
 | 0 | fait — `docker compose up` sert la page (5173) et `/api/sante` (8000) |
+| 1 | fait — 15 phrases de test interprétées par l'analyseur par règles |
+| 2 | fait — plan coté du cas de référence, golden SVG, captures dans `docs/captures/` |
+| 3 | fait — mêmes circuits que le prototype, vérifié en exécutant son JavaScript (4 variantes) |
+| 4 | fait — structure, toiture, solaire, métré, règles ; formules vérifiées par des valeurs calculées à la main |
+| 5 | fait — API, stockage, auth JWT, validations liées à l'empreinte ; parcours générer → modifier → valider → modifier testé |
+| 6 | fait — connecteurs Claude et Nano Banana testés avec réponses simulées ; pipeline complet (interprétation, auto-correction, refus des champs interdits, secours sans clé) ; `/expliquer` |
+| 7 | fait — écrans connexion, projets, projet (barre IA, onglets Plan, Programme, Électricité, Validation) ; e2e Playwright texte → plan → export SVG, sur bureau et téléphone ; captures `docs/captures/lot7-*` |
+| 8 | fait — onglets Structure (plan de fondations), Toiture, Solaire, Métré & devis (export CSV), page Administration (prix, rôles, n° d'ordre) ; e2e : l'admin change un prix et le devis le reprend |
+| 9 | fait — connecteur branché : plan rasterisé en PNG 2048 px dans le navigateur, `POST/GET /rendus`, quota journalier, bandeau « non contractuelle » ajouté par Pillow, galerie ; e2e avec service simulé |
+| 10 | fait — `plan.dxf` (ezdxf, calques MURS/PORTES/FENETRES/COTES/TEXTES/ELEC/STRUCTURE, unité cm), `dossier.pdf` (A4 paysage, plan à l'échelle avec cartouche, puis synthèse, contrôles, électricité, structure, toiture/solaire, métré, hypothèses), `metre.xlsx` (formules) ; boutons d'export et e2e de téléchargement |
+| 11 | fait — `docker-compose.prod.yml` (base avec volume, API gunicorn + Alembic, nginx gzip/cache, certbot), sauvegarde, CI GitHub Actions, `DEPLOIEMENT.md` ; non testé : construction des images Docker (pas de démon Docker dans l'environnement de développement), vérifiée par la CI |
+| 12 | fait — onglet **Atelier** (défaut) : description libre puis commandes en français étape par étape (`POST /commande`, annulation), plan de fondation à gauche, élévation SVG et maquette 3D (three.js) à droite, tous issus des mêmes volumes ; e2e `atelier.spec.ts` |
 
 ## Décisions
 
@@ -22,3 +34,234 @@ En développement, le service `frontend` utilise `node:22-alpine` avec le code m
 ### D-003 — Variables de configuration sans dépendance supplémentaire
 `app/config.py` lit `os.environ` dans une dataclass figée (pas de `pydantic-settings`).
 `JWT_DUREE_H` (défaut 24) ajouté pour la durée de validité des jetons.
+
+### D-004 — Analyseur par règles : données de terrain
+La portance n'est marquée « mesurée » que si le texte parle de mesure, d'étude ou d'essai.
+La résistance de terre n'est jamais supposée : son absence produit une remarque.
+Si le texte cite des équipements, la liste devient exactement ceux cités ; « sans X » retire X des valeurs par défaut.
+
+### D-005 — Implantation : géométrie à l'axe des murs
+Les largeurs calculées (surface / profondeur) sont des dimensions à l'axe des murs. Les surfaces
+nettes en sont déduites par la demi-épaisseur de chaque mur adjacent. L'emprise se mesure aux nus extérieurs.
+
+### D-006 — Cas de référence bloquant en largeur
+Avec les surfaces du § 6.1, la villa de référence mesure 13,48 m hors tout ; avec 2 × 2 m de recul,
+il faut 17,48 m alors que le terrain fait 15 m. Le contrôle `IMPL-EMPRISE-L` est donc **bloquant**
+sur le cas de référence, comme le prévoit la règle (auto-correction par l'IA, ou affichage du bloquant sans clé).
+
+### D-007 — Implantation : cas non décrits
+- Colonne WC/placard (1,10 m) placée entre la dernière chambre et la salle de bains : placard en haut
+  (ouvert sur la chambre voisine), WC en bas (côté couloir). Sans WC séparé, le bas devient un rangement.
+  Sans chambre, le placard ouvre sur la salle de bains.
+- Si le séjour fait moins de 3,60 m de large, la maison est élargie et le surplus va à la chambre parentale.
+- Cuisine ouverte : baie de 2,00 m sur le séjour au lieu d'une porte ; avec un bureau, l'ordre devient
+  Séjour | Cuisine | Bureau pour que la cuisine touche le séjour.
+- Garage : porte basculante 2,40 m en façade ; le mur garage/séjour est un refend porteur de l'épaisseur extérieure.
+- Toiture terrasse : les deux murs du couloir deviennent des refends porteurs (épaisseur extérieure).
+- Hauteurs de fenêtres (hypothèses, `normes.py`) : chambres et bureau 1,35 m, séjour 2,15 m (porte-fenêtre),
+  cuisine 1,15 m, SdB 0,60 m. Avec la règle du 1/6, la plupart des pièces sortent en avertissement.
+- Véranda : 2,50 m de profondeur, largeur du séjour, hors murs. Nord supposé vers le haut du plan.
+- Placard et rangement ne sont pas des pièces à desservir par une porte (ouverture de type `placard`).
+
+### D-008 — Plan SVG
+1 unité SVG = 1 cm réel ; `width`/`height` en mm donnent l'échelle 1:100 à l'impression. Calques :
+`murs`, `textes`, `cotes`, `mobilier` (vide pour l'instant), `elec`, `structure`, `annotations`.
+Les étiquettes sont placées automatiquement hors des zones de débattement des portes et des symboles.
+Les cotes des épaisseurs de murs sont en centimètres (« 20 »), les autres en mètres (« 3,74 »).
+
+### D-009 — Électricité : fidélité au prototype
+Le prototype « Module Électrification » est archivé dans `docs/reference/`. Le test
+`test_identique_au_prototype_execute` exécute son JavaScript (Node) sur les mêmes pièces et les mêmes
+longueurs, et compare circuits, sections, états, différentiels et bilan. Une sortie figée sert quand Node est absent.
+Règles reprises telles quelles du prototype : véranda = « extérieur » (1 point lumineux / 15 m²),
+Ib des circuits spécialisés = P / U (P / (U cos φ) pour les climatiseurs), surfaces = surfaces nettes du plan.
+Le WC, le placard et le rangement ne reçoivent pas de prise ; placard et rangement n'ont pas de point lumineux.
+
+### D-010 — Électricité : placement des symboles
+- Tableau à 0,55 m de la porte d'entrée, côté intérieur de la façade du séjour.
+- Prises spécialisées : plaque, four, lave-vaisselle en cuisine ; lave-linge et pompe au garage, sinon en cuisine ;
+  chauffe-eau en salle de bains ; climatiseurs dans leur pièce. Elles s'intercalent parmi les prises normales.
+- Prises de la véranda : uniquement contre la façade. Interrupteur du dégagement : à côté de la baie du séjour.
+- Si aucun point d'un circuit n'existe sur le plan, la longueur par défaut est la plus grande longueur calculée.
+
+### D-011 — Structure : murs porteurs et largeurs reprises
+- Semelles filantes sous les murs extérieurs et les refends porteurs ; les cloisons de 10 cm sont posées sur le dallage.
+- 2 pans : les fermes portent de façade à façade ; chaque façade reprend la demi-profondeur + le débord ;
+  les pignons reprennent une demi-travée de fermes (0,60 m). 4 pans : murs latéraux à D/4 + débord.
+  Terrasse : dalle portant dans le sens de la profondeur entre façades et murs du couloir.
+- Le poids propre de la semelle n'est pas ajouté (formule du § 6.4 appliquée telle quelle).
+- Poteaux : à chaque extrémité de mur (angles et jonctions, cloisons comprises) et de part et d'autre
+  des ouvertures de plus de 1,80 m.
+
+### D-012 — Toiture
+Le garage reçoit son propre pan (fermes sur sa profondeur). Bois d'une ferme : 2 arbalétriers + entrait +
+poinçon + contrefiches (≈ un rampant). Terrasse : pas de débord, acrotère sur le périmètre, gouttières nulles.
+
+### D-013 — Métré
+- Fouilles : semelle + 0,30 m de sur-profondeur. Maçonnerie : hauteur = HSP (sous le chaînage), ouvertures déduites.
+- Le béton armé regroupe chaînages, poteaux, linteaux et dalle de toiture ; l'acier de la dalle suit le ratio 120 kg/m³.
+- Ciment et sable comptent aussi le mortier ; le dallage compte dans le béton (ciment, granulats).
+- Carrelage : toutes les surfaces nettes sauf le garage (véranda comprise). Peinture : 2 faces de murs + plafonds.
+- Prix de départ dans `app/moteurs/prix_defaut.py`, en USD, « indicatif — à mettre à jour ».
+  Si le programme demande une autre devise, un avertissement le signale ; aucune conversion n'est faite.
+
+### D-014 — Calques par défaut du plan
+`plan.svg` sans paramètre affiche murs, textes, cotes et annotations ; `elec`, `structure` et `mobilier`
+s'activent par `?calques=`. Le placement des étiquettes tient toujours compte des symboles électriques.
+
+### D-015 — Comptes et rôles
+L'inscription publique crée toujours un compte `constructeur`. L'email donné dans `ADMIN_EMAIL` devient
+`admin` à son inscription ; l'admin attribue ensuite les rôles `ingenieur` (avec numéro d'ordre) via
+`PUT /api/admin/utilisateurs/{id}`. Mots de passe hachés avec bcrypt ; jetons JWT HS256 de 24 h (`JWT_DUREE_H`).
+
+### D-016 — Droits sur les projets
+Un constructeur ne voit que ses projets. Ingénieurs et administrateurs lisent tous les projets (pour les
+vérifier) ; seuls le propriétaire et l'admin modifient ou suppriment.
+
+### D-017 — Modification du programme
+`PUT /api/projets/{id}/programme` recalcule toute la chaîne sans auto-correction IA (l'utilisateur a choisi ses
+valeurs). Les validations existantes restent en base mais `encore_valide` passe à faux dès que l'empreinte change.
+
+### D-018 — Base de données
+Au démarrage, les tables manquantes sont créées (`AUTO_CREATE_TABLES=1`, défaut) et la table des prix est
+amorcée. En production, mettre `AUTO_CREATE_TABLES=0` et lancer `alembic upgrade head` (migration initiale fournie).
+Les champs JSON sont en JSONB sous PostgreSQL. Ajout d'une colonne `remarques` (ambiguïtés de l'interprétation)
+et `version` (incrémentée à chaque modification) sur `Projet`, et `utilisateur_id` sur `Rendu` (quotas).
+
+### D-019 — Connecteur Claude : le SDK gère les nouvelles tentatives
+`apiconnect.claude` passe par le SDK `anthropic` (délai 60 s, 2 nouvelles tentatives intégrées au SDK).
+`apiconnect.http` (httpx, 2 nouvelles tentatives à attente exponentielle sur 429/5xx/réseau, `Retry-After`
+respecté) sert à Nano Banana. Les erreurs sont traduites en `IANonConfiguree` (clé absente ou refusée),
+`IAIndisponible` (réseau, surcharge, 5xx : secours immédiat) et `ReponseInvalide` (sortie inexploitable :
+nouvelle tentative, puis secours). Seuls la méthode, l'hôte, le chemin et le statut sont journalisés, jamais
+les en-têtes. Un test parcourt les fichiers suivis par git à la recherche de clés réelles.
+
+### D-020 — Double protection des données de terrain
+Le connecteur recopie `resistance_terre`, `portance_sol` et `portance_mesuree` d'origine dans toute correction
+proposée, et l'orchestrateur refuse de toute façon une correction qui toucherait un champ hors liste blanche.
+Les dimensions du terrain ne sont pas corrigeables non plus.
+
+### D-021 — « Expliquer » sans clé
+Sans clé ou si Claude échoue, `POST /api/projets/{id}/expliquer` renvoie le texte du moteur (titre, détail,
+référence ; pour un circuit, protection, section, longueur et chute de tension) avec `source: "regles"`.
+`element_id` accepte un identifiant de contrôle (`ELEC-DU-C4`), un numéro de circuit (`C4`) ou sa clé (`ecl-1`).
+Claude reçoit l'élément et les hypothèses de son module ; sa réponse est tronquée à 120 mots. L'appel est
+ajouté au journal IA sans changer la date de modification ni l'empreinte du projet.
+
+### D-022 — API Nano Banana relue le 2026-10-18
+La page officielle confirme l'API `interactions` décrite au § 8 (modèle par défaut `gemini-nano-banana-2.1`,
+`image_size` en majuscules). L'analyseur prend la dernière image de `steps[].content[]` (comme `output_image`
+du SDK), accepte aussi `output_image`, l'ancien format `inline_data` et ignore une éventuelle copie de l'entrée.
+Styles : `plan_meuble`, `iso_coupe`, `facade`, `perspective`.
+
+### D-023 — Dates en UTC explicite
+SQLite rend les dates sans fuseau ; l'API les renvoie toujours avec `+00:00`.
+
+### D-024 — Relancer la génération sur un projet existant
+`POST /api/projets/generer` accepte `projet_id` : la barre IA d'un projet existant relance tout le pipeline
+(interprétation, calcul, auto-correction) sur ce projet au lieu d'en créer un nouveau. La version est incrémentée,
+le journal IA est complété et les signatures existantes deviennent caduques (l'empreinte change).
+
+### D-025 — Interface sans bibliothèque de routage ni de composants
+Navigation par fragment (`#/projets/12/electricite`), état local React, CSS maison à variables. Bundle initial
+≈ 50 Ko gzip, chaque onglet chargé à la demande. Les calques du plan sont redemandés au serveur (le placement des
+étiquettes dépend des calques affichés) et mis en cache côté navigateur ; le calque `mobilier`, encore vide,
+n'est pas proposé. Les lectures sont retentées 2 fois sur coupure réseau ; les écritures ne le sont pas
+(pas de double création), l'erreur est affichée avec un bouton « Réessayer ».
+
+### D-026 — « Bon pour exécution » avant le lot 10
+Le bouton est désactivé tant que les six modules ne sont pas tous signés. En attendant le dossier PDF du lot 10,
+il télécharge le rapport texte.
+
+### D-027 — Tests e2e
+Playwright lance l'API (SQLite jetable, sans clé IA) et Vite ; le parcours tourne sur un écran de bureau et un
+téléphone (Pixel 7). `E2E_PYTHON` désigne l'interpréteur Python qui a les dépendances du backend.
+`CAPTURES=1 npx playwright test captures` régénère les captures de revue visuelle.
+
+### D-028 — Prix modifiés et projets existants
+Le métré d'un projet garde les prix du moment de son calcul. Le bouton « Appliquer les prix actuels » de l'onglet
+Métré recalcule le projet avec la table de prix courante ; l'empreinte ne dépendant que du programme et de la
+version des moteurs, les signatures restent valides.
+
+### D-029 — Export du métré avant le lot 10
+L'onglet Métré exporte un CSV (séparateur « ; », virgule décimale, BOM UTF-8 pour Excel) en attendant le classeur
+XLSX du lot 10.
+
+### D-030 — Stockage et accès des rendus
+Les images sont enregistrées sur disque (`STOCKAGE_RENDUS/{projet}/{uuid}.jpg`, volume Docker en production) ;
+S3 n'est pas branché. Elles sont servies par `GET /api/projets/{id}/rendus/{n}.jpg` avec le jeton (l'interface
+les charge en blob). Supprimer un projet supprime ses fichiers. Tout utilisateur qui peut lire le projet peut
+demander un rendu (le quota est par utilisateur) ; seuls le propriétaire et l'admin suppriment.
+
+### D-031 — Mention non contractuelle
+Le bandeau est ajouté sous l'image (l'image n'est pas recouverte), en IBM Plex Mono (licence OFL, fournie dans
+`app/rendu/polices/`) car la police par défaut de Pillow n'a pas les accents. Sur une image étroite, la mention
+passe à la ligne au lieu d'être tronquée. L'interface la répète sous chaque vignette.
+
+### D-032 — Quota et échecs
+Seuls les rendus réussis comptent dans le quota (`RENDUS_MAX_PAR_JOUR`, jour UTC). Un échec du service est
+journalisé dans le journal IA avec `erreur: true` et renvoie le message du § 8.
+
+### D-033 — DXF en centimètres, vérifié sans LibreOffice
+Le plan est construit en mètres puis mis à l'échelle ×100 : une unité du DXF = 1 cm, comme le plan SVG (`INSUNITS` = cm,
+`LTSCALE` 20, axe Y inversé pour garder le nord en haut). Contrôle : `ezdxf` audit sans erreur, relecture du fichier et
+comparaison des murs, portes et circuits au moteur (`test_exports.py`), rendu SVG via le moteur de dessin d'`ezdxf`
+(géométrie correcte). L'import DXF de LibreOffice en ligne de commande produit une page blanche même pour un fichier
+d'essai minimal généré par `ezdxf` : ce n'est pas un défaut de notre export, il n'est pas utilisé comme critère.
+
+### D-034 — PDF : police Helvetica, échelle normalisée, mention
+Le PDF utilise les polices standard (Helvetica, cp1252) pour rester léger ; `ascii_pdf` remplace les symboles absents
+(Ω, σ, Δ, ≤, →…). Le plan est dessiné à 1:100 s'il tient sur la page, sinon à l'échelle normalisée inférieure
+(1:200, 1:500), avec cartouche, flèche du nord et échelle graphique. Le pied de page porte « À valider par un ingénieur
+qualifié · document non contractuel » tant que les six modules ne sont pas signés (D-026) ; « Bon pour exécution »
+télécharge ce même PDF.
+
+### D-035 — XLSX avec formules
+Le métré est exporté avec de vraies formules (`=D*E`, `=SUM`, total) et recalcul à l'ouverture ; un test recalcule le
+fichier avec LibreOffice et le compare au total du moteur. Feuilles : Métré, Quantités, Hypothèses.
+
+### D-036 — Production : garde-fous et déploiement
+`ENVIRONNEMENT=production` : l'API refuse de démarrer avec la clé JWT de développement ou un secret de moins de 32
+caractères. En production `AUTO_CREATE_TABLES=0`, le schéma vient d'Alembic (`alembic upgrade head` au démarrage du
+conteneur ; `alembic check` en CI garantit que la migration suit les modèles). Le certificat HTTPS est obtenu en deux temps
+(modèle nginx HTTP seul puis HTTPS, variable `NGINX_MODELE`). Les images Docker n'ont pas pu être construites dans cet
+environnement (pas de démon Docker) : le fichier compose est validé par `docker compose config`, la construction des deux
+images est un travail de la CI.
+
+### D-037 — Élévations et maquette 3D : une seule source de volumes
+`rendu/volumes.construire` produit des boîtes (murs découpés autour des baies, chaînage, semelles, soubassement, dalle,
+véranda, acrotère) et des faces (toiture 2 pans, 4 pans, pignons) à partir des résultats des moteurs. L'élévation SVG
+(projection orthogonale, algorithme du peintre) et la maquette 3D les lisent toutes deux : elles ne peuvent pas se
+contredire avec le plan. Repère : x vers la droite, y vers le bas du plan, façade principale à y max ; plancher fini = ±0,00.
+Les cotes de niveau (terrain 0,20 m sous le plancher, assise 0,80 m, allèges 0,90/1,60 m, etc.) sont dans
+`normes.ELEVATION`. Image indicative et non contractuelle, mention portée par le dessin ; hypothèses listées sous la maquette.
+
+### D-038 — Commandes en langage naturel
+`moteurs/commandes.appliquer` applique une commande au programme courant (fonction pure) : variations relatives
+(« ajoute une chambre », « agrandis le séjour de 5 m² ») prioritaires sur la lecture absolue, retraits, toiture, terrain.
+L'IA texte, si configurée, élargit la compréhension ; `portance_sol`, `portance_mesuree`, `resistance_terre` et le terrain
+viennent toujours des règles (jamais de l'IA). Chaque commande est une version du projet, journalisée avec le programme
+précédent ; « annule » restaure le programme avant la dernière commande non annulée. Une commande non comprise ne
+change rien et le dit, avec des exemples. Toute modification annule les validations (empreinte, D-026).
+
+### D-039 — three.js chargé à la demande
+La maquette 3D utilise three.js 0.170 (OrbitControls), chargé en import dynamique à l'ouverture de l'Atelier : le
+bundle principal reste léger pour les connexions lentes. L'avertissement de taille de Vite concerne ce seul chunk.
+Sans WebGL, un message remplace la maquette ; l'élévation et le plan restent disponibles.
+
+### D-040 — Rendu réaliste automatique (Nano Banana) depuis la maquette 3D
+Nouveau style `realiste` : l'image envoyée à Nano Banana est une capture PNG de la maquette 3D (vue 3/4, toiture
+visible, fondations masquées), avec un prompt dédié qui impose de conserver volumes, toiture, véranda et ouvertures.
+L'Atelier la lance seul 3 s après chaque calcul (case « Automatique », mémorisée dans le navigateur), uniquement si une
+clé est configurée, si le quota journalier le permet et si le dernier rendu est plus ancien que le projet. Un échec
+n'est pas retenté automatiquement pour la même empreinte (bouton « Générer le rendu »). Même quota, même mention
+« non contractuelle » (bandeau ajouté côté serveur). L'image ne sert jamais de source de calcul.
+Clé : variable d'environnement `GEMINI_API_KEY` du serveur (jamais dans le dépôt ni dans le navigateur).
+
+### D-041 — Supabase : base PostgreSQL et stockage des images
+Supabase n'est utilisé que comme PostgreSQL géré (`DATABASE_URL`, session pooler) et Storage pour les rendus ; l'authentification
+reste la nôtre (JWT). Migration `a1c0de5b9a01` : RLS activée sans politique sur toutes les tables, pour fermer l'API REST
+publique (le rôle propriétaire utilisé par l'application la contourne). Rendus : `rendu/fichiers.py` écrit sur le disque ou,
+si `SUPABASE_URL` et `SUPABASE_SERVICE_KEY` sont définis, dans un bucket privé via l'API REST ; la clé en base commence par
+`supabase:` pour les fichiers distants, donc les deux modes coexistent. La clé `service_role` reste côté serveur.
+

@@ -21,6 +21,9 @@
   --plan-texte: #16202c;
   --plan-elec: #c0392b;
   --plan-structure: #7a4fbf;
+  /* élévation */
+  --el-mur: #ece6da; --el-chainage: #c9c3b7; --el-toit: #b4543a; --el-toit-v: #9d8f84; --el-beton: #cfd2d6;
+  --el-vitre: #bcd8ea; --el-porte: #8a6a4a; --el-bois: #a78a68;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -28,6 +31,8 @@
     --accent: #6ea8ff; --accent-texte: #0f1620; --ok: #5cc98a; --avert: #f0a947; --bloquant: #ff7b72;
     --plan-fond: #17212d; --plan-mur: #c9d3e0; --plan-sol: #17212d; --plan-trait: #c9d3e0;
     --plan-cote: #6ea8ff; --plan-texte: #e6ebf2; --plan-elec: #ff8a7a; --plan-structure: #b799ff;
+    --el-mur: #4a4a47; --el-chainage: #6a6a66; --el-toit: #8f4631; --el-toit-v: #6f655d; --el-beton: #5b6068;
+    --el-vitre: #3f6a88; --el-porte: #75583d; --el-bois: #7d6649;
   }
 }
 :root[data-theme="dark"] {
@@ -35,4 +40,6 @@
   --accent: #6ea8ff; --accent-texte: #0f1620; --ok: #5cc98a; --avert: #f0a947; --bloquant: #ff7b72;
   --plan-fond: #17212d; --plan-mur: #c9d3e0; --plan-sol: #17212d; --plan-trait: #c9d3e0;
   --plan-cote: #6ea8ff; --plan-texte: #e6ebf2; --plan-elec: #ff8a7a; --plan-structure: #b799ff;
+  --el-mur: #4a4a47; --el-chainage: #6a6a66; --el-toit: #8f4631; --el-toit-v: #6f655d; --el-beton: #5b6068;
+  --el-vitre: #3f6a88; --el-porte: #75583d; --el-bois: #7d6649;
 }
