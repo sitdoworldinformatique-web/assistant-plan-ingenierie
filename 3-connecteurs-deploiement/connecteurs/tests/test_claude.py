@@ -166,5 +166,7 @@ def test_vrai_sdk_transport_simule_sans_fuite_de_cle(caplog):
     assert len(requetes) == 2  # une nouvelle tentative après la surcharge
     corps = json.loads(requetes[-1].content)
     assert corps["tool_choice"] == {"type": "tool", "name": "definir_programme"}
-    assert requetes[-1].headers["x-api-key"] == CLE
+    # selon la version du SDK, la clé part dans `x-api-key` ou dans `Authorization: Bearer`
+    en_tetes = requetes[-1].headers
+    assert CLE in (en_tetes.get("x-api-key"), (en_tetes.get("authorization") or "").removeprefix("Bearer "))
     assert CLE not in caplog.text and CLE not in repr(c)
