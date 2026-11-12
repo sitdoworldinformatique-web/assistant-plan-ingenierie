@@ -155,10 +155,12 @@ def rendre_elevation(res: Resultats, prog: Programme, vue: str = "facade") -> st
     cotes: list[str] = []
     for nom, z in niveaux:
         y = -z * S
+        # sous le trait pour les niveaux enterrés : « plancher fini » (±0,00) et « terrain naturel » (-0,20) sont à 20 cm
+        decalage = 36 if z < 0 else -6
         cotes.append(f'<line class="niveau" x1="{_n(x0 - marge_g)}" y1="{_n(y)}" x2="{_n(x1)}" y2="{_n(y)}"/>')
         cotes.append(f'<polygon class="cote-plein" points="{_n(x0 - marge_g + 14)},{_n(y)} {_n(x0 - marge_g + 26)},'
                      f'{_n(y - 10)} {_n(x0 - marge_g + 2)},{_n(y - 10)}"/>')
-        cotes.append(f'<text class="cote-texte" x="{_n(x0 - marge_g + 50)}" y="{_n(y - 6)}" font-size="38">'
+        cotes.append(f'<text class="cote-texte" x="{_n(x0 - marge_g + 50)}" y="{_n(y + decalage)}" font-size="38">'
                      f'{_niveau(z)} {escape(nom)}</text>')
     # Cote de largeur hors-tout
     yc = -z_bas * S + 50

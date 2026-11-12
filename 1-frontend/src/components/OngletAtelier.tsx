@@ -22,6 +22,7 @@ export default function OngletAtelier({ projet, enCours, peutModifier, onCommand
   const [vue, setVue] = useState<"facade" | "pignon">("facade");
   const [modele, setModele] = useState<Modele3D | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
+  const [essai, setEssai] = useState(0);
   const [capteur, setCapteur] = useState<(() => string) | null>(null);
 
   useEffect(() => {
@@ -33,7 +34,7 @@ export default function OngletAtelier({ projet, enCours, peutModifier, onCommand
     return () => {
       annule = true;
     };
-  }, [projet.id, projet.empreinte, projet.version]);
+  }, [projet.id, projet.empreinte, projet.version, essai]);
 
   useEffect(() => {
     let annule = false;
@@ -47,7 +48,7 @@ export default function OngletAtelier({ projet, enCours, peutModifier, onCommand
   return (
     <div className="atelier">
       <BarreCommandes journal={projet.journal_ia} texteInitial={projet.texte_initial} enCours={enCours} peutModifier={peutModifier} onCommande={onCommande} />
-      {erreur && <MessageErreur message={erreur} />}
+      {erreur && <MessageErreur message={erreur} onReessayer={() => setEssai((n) => n + 1)} />}
       {bloquants.length > 0 && (
         <p className="alerte-atelier" role="status">
           {bloquants.length} point{bloquants.length > 1 ? "s" : ""} bloquant{bloquants.length > 1 ? "s" : ""} : {bloquants[0].titre}. Le détail est dans l'onglet Validation.
